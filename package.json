@@ -19,6 +19,7 @@
     "webpack-cli": "^4.9.2"
   },
   "dependencies": {
+    "@mediapipe/drawing_utils": "^0.3.1620248257",
     "@mediapipe/face_mesh": "^0.4.1633559619",
     "gulp-typescript": "^2.12.2"
   }
