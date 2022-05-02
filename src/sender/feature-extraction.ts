@@ -1,0 +1,1 @@
+import {FaceMesh} from '@mediapipe/face_mesh'
