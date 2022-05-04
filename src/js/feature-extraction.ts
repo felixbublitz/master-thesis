@@ -1,28 +1,47 @@
 import {FaceMesh, FACEMESH_RIGHT_EYE, FACEMESH_RIGHT_EYEBROW, FACEMESH_RIGHT_IRIS, FACEMESH_LEFT_EYEBROW, FACEMESH_LEFT_EYE, FACEMESH_FACE_OVAL, FACEMESH_LEFT_IRIS, FACEMESH_LIPS, FACEMESH_TESSELATION} from '@mediapipe/face_mesh'
+import {Camera} from "@mediapipe/camera_utils"
 import {drawConnectors} from '@mediapipe/drawing_utils'
 
 export class FeatureExtraction{
 
+    readonly LIBRARY_FACE_MESH : string =  'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/';
     readonly videoElement : HTMLVideoElement = <HTMLVideoElement>document.getElementsByClassName('video')[0];
     readonly canvasElement : HTMLCanvasElement = <HTMLCanvasElement>document.getElementsByClassName('output_canvas')[0];
     readonly canvasCtx = this.canvasElement.getContext('2d');
     readonly faceMesh;
 
     constructor(){
-        this.faceMesh = new FaceMesh();
+        
+        this.faceMesh = new FaceMesh({locateFile: (file) => {
+          return this.LIBRARY_FACE_MESH + file;
+        }});
+        this.startFaceDetection();
+    }
 
-        console.log(this.canvasCtx);
+    public async getFeatures(frame : any){
+      await this.faceMesh.send({image: frame});
+    }
 
-        this.faceMesh.setOptions({
-            maxNumFaces: 1,
-            refineLandmarks: true,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-          });
 
-          this.faceMesh.onResults(this.onResult);
+    private async startFaceDetection(){
+      this.faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
 
-          this.faceMesh.send({image: this.videoElement});
+      this.faceMesh.onResults(this.onResult.bind(this));
+      
+
+      /*const camera = new Camera(this.videoElement, {
+        onFrame: async () => {
+          await this.faceMesh.send({image: this.videoElement});
+        },
+        width: 1280,
+        height: 720
+      });
+      camera.start();*/
     }
 
     private onResult(results : any){

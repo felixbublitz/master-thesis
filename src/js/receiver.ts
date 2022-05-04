@@ -1,4 +1,4 @@
-import {VideoHandler} from "../video-handler";
+import {VideoHandler} from "./video-handler";
 
 class Receiver{
     readonly videoHandler = new VideoHandler("video");
