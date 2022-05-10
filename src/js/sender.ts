@@ -10,7 +10,8 @@ class Sender{
         this.featureExtraction = new FeatureExtraction();
 
         this.videoHandler.onFrameChanged = (video)=> {
-            //this.featureExtraction.getFeatures(video);
+           
+            this.featureExtraction.getFeatures(video);
         }
 
         this.videoHandler.start();

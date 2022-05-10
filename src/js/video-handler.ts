@@ -3,11 +3,16 @@ export class VideoHandler{
 
     constructor(domIdentifier: string){
         this.domElement = <HTMLVideoElement>document.getElementById(domIdentifier);
+        this.domElement.onloadeddata = this.loaded.bind(this);
     }
 
 
     public onFrameChanged(video : HTMLVideoElement){};
 
+
+    private loaded(this: any, ev : Event){
+        window.requestAnimationFrame(this.frameChanged.bind(this));
+    }
 
     private frameChanged(){
         this.onFrameChanged(this.domElement);
@@ -19,7 +24,7 @@ export class VideoHandler{
             navigator.mediaDevices.getUserMedia({video : true}).then(
                 (stream)=>{
                     this.domElement.srcObject = stream;
-                    window.requestAnimationFrame(this.frameChanged.bind(this));
+                    
                 })["catch"]((error)=>{
                     console.log("error");
                 });

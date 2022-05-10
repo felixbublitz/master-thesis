@@ -4,7 +4,7 @@ import {drawConnectors} from '@mediapipe/drawing_utils'
 
 export class FeatureExtraction{
 
-    readonly LIBRARY_FACE_MESH : string =  'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/';
+    readonly LIBRARY_FACE_MESH : string =  'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/';
     readonly videoElement : HTMLVideoElement = <HTMLVideoElement>document.getElementsByClassName('video')[0];
     readonly canvasElement : HTMLCanvasElement = <HTMLCanvasElement>document.getElementsByClassName('output_canvas')[0];
     readonly canvasCtx = this.canvasElement.getContext('2d');
@@ -26,25 +26,18 @@ export class FeatureExtraction{
     private async startFaceDetection(){
       this.faceMesh.setOptions({
         maxNumFaces: 1,
-        refineLandmarks: true,
+        refineLandmarks: false,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
       });
 
       this.faceMesh.onResults(this.onResult.bind(this));
-      
-
-      /*const camera = new Camera(this.videoElement, {
-        onFrame: async () => {
-          await this.faceMesh.send({image: this.videoElement});
-        },
-        width: 1280,
-        height: 720
-      });
-      camera.start();*/
+      this.faceMesh.initialize();
     }
 
     private onResult(results : any){
+
+      console.log(results);
         this.canvasCtx.save();
         this.canvasCtx.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
         this.canvasCtx.drawImage(
