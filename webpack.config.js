@@ -1,46 +1,95 @@
 const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin')
+var fs = require('fs');
+let url = require('url');
+let webpack = require('webpack');
 
-module.exports = {
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+const serverConfig = {
+    mode: "production",
+    target: 'node',
     entry :
     {
-        sender : './src/js/sender.ts',
-        receiver : './src/js/receiver.ts'
+        'server' : './src/js/server.ts'
     },
     module : {
         rules : [
             {
                 test: /\.tsx?$/,
                 use: 'ts-loader',
-                exclude: /node_modules/,
+                include: path.resolve(__dirname, 'src/js')
             },
-        ],
+        ]
     },
     plugins: [
+        
+         
+    ],
+    resolve: {
+        extensions: ['.ts', '.js'],
+    },
+    output: {
+        filename: 'server.js',
+        path: path.resolve(__dirname, 'dist'),
+    }
+   
+};
+
+const webConfig = {
+
+    target : 'web',
+    entry :
+    {
+        'sender' : './src/js/sender.ts',
+        'receiver' : './src/js/receiver.ts',
+    },
+    module : {
+        rules : [
+            {
+                test: /\.tsx?$/,
+                use: 'ts-loader',
+                include: path.resolve(__dirname, 'src/js')
+            },
+        ]
+    },
+    plugins: [
+       
+         new webpack.DllReferencePlugin({
+            context: __dirname,
+            manifest: require( './dist/library/web_library.json')
+          }),
+         
         new HtmlWebpackPlugin({
             title: "Sender",
             filename : "sender/index.html",
             template : "src/assets/template.html",
-            chunks : ["sender"]
+            chunks : ["sender"],
+            templateParameters: {
+                dll: '../../library/web_library.dll.js',
+              }
         }),
         new HtmlWebpackPlugin({
             title: "Receiver",
             filename : "receiver/index.html",
             template : "src/assets/template.html",
-            chunks : ["receiver"]
-        })
+            chunks : ["receiver"],
+            templateParameters: {
+                dll: path.resolve(__dirname, 'dist/library/web_library.dll.js'),
+              }
+        }),
+       
     ],
     resolve: {
-        extensions: ['.tsx', '.ts', '.js'],
+        extensions: ['.ts', '.js'],
     },
     output: {
         filename: '[name]/main.js',
-        path: path.resolve(__dirname, 'dist/sender'),
-    },
-    devServer: {
-        compress: true,
-        hot: true,
-        host: "localhost",
-        port: 3000
+        path: path.resolve(__dirname, 'dist'),
     }
-}
+   
+};
+
+module.exports = [
+    
+    webConfig,serverConfig
+]
