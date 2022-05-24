@@ -5,7 +5,7 @@ class Receiver{
     readonly videoHandler = new VideoHandler("video");
     readonly connectionHandler = new ConnectionHandler();
     readonly SOCKET_ADDR = "ws://127.0.0.1:2222";
-    readonly PEER_ID = 0;
+    readonly PEER_ID = 1;
 
     constructor(){
         

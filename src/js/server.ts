@@ -29,22 +29,23 @@ class Server{
    
     
     private connection(peer : WSWebSocket){
-        logger.info("new peer connection");
+        logger.info("Peer connected");
         peer.on('message', (message : any)=>{
             this.receive(message.toString(), <any>peer);
         });  
     }
 
     private receive(message : string, peer : AdrSocket){
-        let pck  = SocketPackage.decode(message.toString());
-        logger.info("Received event: " + pck.event + " from " + peer.id);
+        let pkg = SocketPackage.deserialize(message.toString());
 
-        if(pck.forward){
-            this.forwardPackage(<ForwardPackage>pck, peer.id);
+        logger.info("Received event: " + pkg.event + " from " + peer.id);
+
+        if(pkg.fwdAddr != null){
+            this.forwardPackage(pkg);
             return;
         }
 
-        switch(pck.event){
+        switch(pkg.event){
             case 'register':
                 peer.id = Server.initClients++;
                 peer.send(new SocketPackage('register-re', {id : peer.id}).serialize());
@@ -56,20 +57,18 @@ class Server{
         }
     }
 
-    private forwardPackage(pck : ForwardPackage, sender : number){
-        if(sender == null || pck.address.receiver == null){
-            logger.error("sender or receiver not set")
-            logger.group("sender or receiver not set");
-            logger.debug(pck);
+    private forwardPackage(pkg : SocketPackage){
+        if(pkg.fwdAddr == null){
+            logger.error("fwdAddr not set")
+            logger.debug(pkg);
             logger.groupEnd();
             return;
         }
 
-        logger.info("Forward event: " + pck.event + " to: " + pck.address.receiver);
+        logger.debug(pkg.fwdAddr);
 
-        pck.address.sender = sender;
-        logger.info('Socket ' + sender + " sends event: " + pck.event);
-        this.getSocket(pck.address.receiver).send(pck.serialize());
+        logger.info("Forward event: " + pkg.event + " to: " + pkg.fwdAddr.receiver);
+        this.getSocket(pkg.fwdAddr.receiver).send(pkg.serialize());
     }
 
 
@@ -101,10 +100,10 @@ const express = require('express');
 const logging = require('webpack/lib/logging/runtime');
 
 logging.configureDefaultLogger({
-    level: 'info',
-    debug: '/Server/',
+    level: 'debug',
+    debug: true,
   });
 
-import {ForwardPackage, SocketPackage, AdrSocket, AddressLabel} from "./connection-types";
+import {SocketPackage, AdrSocket, AddressLabel} from "./connection-types";
 let logger = logging.getLogger("Server");
 new Server();

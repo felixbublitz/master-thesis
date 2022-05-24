@@ -1,5 +1,8 @@
 const logging = require('webpack/lib/logging/runtime');
-let logger = logging.getLogger("Server");
+
+
+let logger = logging.getLogger("connection-handler");
+
 
 
 export interface AdrSocket extends WebSocket{
@@ -11,96 +14,69 @@ export class AddressLabel{
     public sender : number = this.NOT_SET;
     public receiver : number = this.NOT_SET;
 
+    constructor(sender : number, receiver : number){
+        this.sender = sender;
+        this.receiver = receiver;
+    }
     
     public getData(){
         return {sender : this.sender, receiver : this.receiver};
     }
-
 }
+
 
 export class SocketPackage{
-    readonly event : string;
-    readonly data : any;
-    readonly forward : boolean = false;
+    event: string;
+    data: any;
+    fwdAddr : AddressLabel;
 
-    constructor(event : string, data? : object){
-        logger.group("Create Socket Package: " + event);
-        logger.debug(data);
-        logger.groupEnd();
+    constructor(event: string, data?: any, fwdAddr? : AddressLabel) {
         this.event = event;
-        this.data = data;
-    }
 
+        if(data != null)
+            this.data = data;
+
+        if(fwdAddr != null)
+            this.fwdAddr = fwdAddr;
+    }
     
-
-    static decode(encrypted : string){
+    static deserialize(encrypted: string) : SocketPackage {        
         let object = JSON.parse(encrypted);
 
-        if(object.forward)
-            return new ForwardPackage(object.address, object.event, object.data);
-
-        return new SocketPackage(object.event, object.data);
-    }
-
-
-
-    public serialize(){
-        let object : any = {};
-        object.event = this.event;
-        object.data = this.data;
-        return JSON.stringify(object);
-    }
-
-}
-
-
-
-
-
-export class ForwardPackage extends SocketPackage{
-
-    public address : AddressLabel;
-    forward = true;
-
-    constructor(address : number | AddressLabel, event : string, data : object){
-        super(event, data)
-        this.address = new AddressLabel();
-
-        if(typeof address === 'number'){
-            this.address.receiver = <number>address;
-        }else{
-            this.address = <AddressLabel>address;
-        }
-        
-    }
-
-    static deserialize(encrypted : string){
         logger.group("Deserialize socket package");
-        logger.debug(this);
+        logger.debug(object);
         logger.groupEnd();
 
-        let object = JSON.parse(encrypted);
-        return new ForwardPackage(object.event, object.address, object.data);
+        return new SocketPackage(object.event, object.data, object.fwdAddr == null ? null : new AddressLabel(object.fwdAddr.sender, object.fwdAddr.receiver));
+
     }
-
-    public serialize(){
-        
-        logger.group("Serialize socket package");
-        logger.debug(this);
-        logger.groupEnd();
-
+    serialize() {
         let object : any = {};
         object.event = this.event;
-        object.address = this.address.getData();
+
+        if(this.fwdAddr != null)
+        object.fwdAddr = this.fwdAddr.getData();
+
+        if(this.data != null)
         object.data = this.data;
-        object.forward = this.forward;
+
+        logger.group("Serialize socket package");
+        logger.debug(object);
+        logger.groupEnd();
 
         return JSON.stringify(object);
     }
-
-  
-
 }
+
+export namespace SocketPackage
+{
+    export enum Type
+    {
+        SocketPackage,
+        ForwardPackage
+    }
+}
+
 
 export class ErrorPackage extends SocketPackage{
     

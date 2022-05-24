@@ -1,18 +1,19 @@
-import { ForwardPackage, AdrSocket, SocketPackage } from "./connection-types";
+import { AddressLabel, AdrSocket, SocketPackage } from "./connection-types";
 
 export class ConnectionHandler{
     private server : WebSocket;
     private peer : RTCPeerConnection;
     private ownID : number;
     private receiver : number = 0;
+    private iceSetup = false;
 
     constructor(){
 
     }
 
-    public init(addr : string = null, ownID? : number){
+    public init(addr : string = null, receiver : number){
     
-        this.ownID = ownID;
+        this.receiver = receiver;
         
         this.server = new WebSocket(addr); 
         this.server.onopen = this.open.bind(this);
@@ -42,24 +43,24 @@ export class ConnectionHandler{
     }
     
     private receive(message : MessageEvent, peer : AdrSocket){
-        let pck  = SocketPackage.decode(message.data.toString());
-        logger.info("Received event: " + pck.event);
+        let pkg  = SocketPackage.deserialize(message.data.toString());
+        logger.info("Received event: " + pkg.event);
 
-        switch(pck.event){
+        switch(pkg.event){
             case 'register-re':
-                this.ownID = pck.data.id;
+                this.ownID = pkg.data.id;
                 logger.log("Registered as peer: " + this.ownID);
                 this.onConnection(this);
             break;
             case 'mediaOffer':
-                this.mediaOffer(pck.data);
+                this.mediaOffer(pkg.data);
                 return;
             case 'mediaAnswer':
-                this.mediaAnswer(pck.data);
+                this.mediaAnswer(pkg.data);
             case 'iceCandidate':
-                this.iceCandidate(pck.data);
+                this.iceCandidate(pkg.data);
             case 'error':
-                this.error(pck.data.message);
+                this.error(pkg.data.message);
         }            
     }
 
@@ -68,8 +69,10 @@ export class ConnectionHandler{
     }
 
     private onICECandidate(event : RTCPeerConnectionIceEvent){
-        if (event.candidate !== null) 
-        this.server.send(new ForwardPackage(this.receiver, 'iceCandidate', {candidate : event.candidate}).serialize());
+        if (!this.iceSetup && event.candidate !== null){
+            this.iceSetup = true;
+            this.server.send(new SocketPackage('iceCandidate', {candidate : event.candidate}, new AddressLabel(this.ownID, this.receiver)).serialize());
+        }
     }
 
     public onConnection(ch : ConnectionHandler){}
@@ -78,7 +81,7 @@ export class ConnectionHandler{
     public async sendMediaOffer(){
         const peerOffer = await this.peer.createOffer();
         await this.peer.setLocalDescription(new RTCSessionDescription(peerOffer));
-        this.server.send(new ForwardPackage(this.receiver, 'mediaOffer', {offer: peerOffer}).serialize());
+        this.server.send(new SocketPackage('mediaOffer', {offer: peerOffer}, new AddressLabel(this.ownID, this.receiver)).serialize());
     }
 
     private async mediaAnswer(data : any){
@@ -89,15 +92,16 @@ export class ConnectionHandler{
         await this.peer.setRemoteDescription(new RTCSessionDescription(data.offer));
         const peerAnswer = await this.peer.createAnswer();
         await this.peer.setLocalDescription(new RTCSessionDescription(peerAnswer));
-        this.server.send(new ForwardPackage(this.receiver, 'mediaAnswer', {answer: peerAnswer,}).serialize());
+        this.server.send(new SocketPackage('mediaAnswer', {answer: peerAnswer}, new AddressLabel(this.ownID, this.receiver)).serialize());
         
     }
 
     private async iceCandidate(data : any){
         try {
-            const candidate = new RTCIceCandidate(data.candidate);
-            await this.peer.addIceCandidate(candidate);
+            //const candidate = new RTCIceCandidate();
+            await this.peer.addIceCandidate(data.candidate);
           } catch (error) {
+              console.log(error);
             this.error(error);
           }
     }
@@ -116,10 +120,5 @@ export class ConnectionHandler{
 
 const logging = require('webpack/lib/logging/runtime');
 
-
-logging.configureDefaultLogger({
-    level: 'debug',
-    debug: '/connection-handler/',
-  });
 
 let logger = logging.getLogger("connection-handler");

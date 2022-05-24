@@ -74,7 +74,7 @@ const webConfig = {
             template : "src/assets/template.html",
             chunks : ["receiver"],
             templateParameters: {
-                dll: path.resolve(__dirname, 'dist/library/web_library.dll.js'),
+                dll: '../../library/web_library.dll.js',
               }
         }),
        

@@ -24,12 +24,12 @@ class Sender{
         
 
         this.connectionHandler.onConnection = (handler)=>{
-            let receiver = prompt('receiver id:');
-            
             handler.sendVideo(this.videoHandler.getStream());
         };
 
-        this.connectionHandler.init(this.SOCKET_ADDR);
+        let receiver = parseInt(prompt('receiver id:'));
+
+        this.connectionHandler.init(this.SOCKET_ADDR, receiver);
     }
   
 }
