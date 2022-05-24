@@ -1,14 +1,17 @@
 
-import {ConnectionHandler} from "./connection-handler";
+import {ConnectionHandler} from "./ws/connection-handler";
+import {VideoHandler} from "./etc/video-handler";
+import {FeatureExtraction} from "./etc/feature-extraction";
 
 class Sender{
-    readonly videoHandler;
-    readonly featureExtraction;
-    readonly connectionHandler;
-    readonly SOCKET_ADDR = "ws://127.0.0.1:2222";
+    private readonly videoHandler;
+    private readonly featureExtraction;
+    private readonly connectionHandler;
+    private readonly WS_ADDR = "ws://127.0.0.1:2222";
+    private readonly VIDEO_DOM_ID = "video";
     
     constructor(){
-        this.videoHandler = new VideoHandler("video");
+        this.videoHandler = new VideoHandler(this.VIDEO_DOM_ID);
         this.featureExtraction = new FeatureExtraction();
         this.connectionHandler = new ConnectionHandler(); 
         this.init();       
@@ -16,28 +19,16 @@ class Sender{
 
     private async init(){
         this.videoHandler.onFrameChanged = (video)=> {
-           
             this.featureExtraction.getFeatures(video);
         };
-
         await this.videoHandler.startWebcam();
-        
 
-        this.connectionHandler.onConnection = (handler)=>{
-            handler.sendVideo(this.videoHandler.getStream());
+        this.connectionHandler.onConnection = ()=>{
+            this.connectionHandler.sendVideo(this.videoHandler.getStream());
         };
 
-        let receiver = parseInt(prompt('receiver id:'));
-
-        this.connectionHandler.init(this.SOCKET_ADDR, receiver);
+        this.connectionHandler.init(this.WS_ADDR, parseInt(prompt('receiver id:')));
     }
-  
 }
 
-import {VideoHandler} from "./video-handler";
-import {FeatureExtraction} from "./feature-extraction";
-
-
-
 new Sender();
-

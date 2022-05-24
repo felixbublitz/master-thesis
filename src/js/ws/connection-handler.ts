@@ -1,25 +1,25 @@
 import { AddressLabel, AdrSocket, SocketPackage } from "./connection-types";
 
+const logging = require('webpack/lib/logging/runtime');
+let logger = logging.getLogger("connection-handler");
+
+
 export class ConnectionHandler{
     private server : WebSocket;
     private peer : RTCPeerConnection;
     private ownID : number;
-    private receiver : number = 0;
-    private iceSetup = false;
+    private receiverID : number = 0;
+    private iceSetupDone = false;
 
-    constructor(){
+    public onConnection(){}
+    public onStreamsReceived(streams : readonly MediaStream[]){}
 
-    }
-
-    public init(addr : string = null, receiver : number){
-    
-        this.receiver = receiver;
-        
+    public init(addr : string, receiver : number){
+        this.receiverID = receiver;
         this.server = new WebSocket(addr); 
         this.server.onopen = this.open.bind(this);
         this.server.onerror = this.error.bind(this);
         this.server.onmessage = this.receive.bind(this);
-
         this.peer = new RTCPeerConnection({
             iceServers : [
                 {
@@ -27,15 +27,11 @@ export class ConnectionHandler{
                 }
             ]
         });
-
         this.peer.onicecandidate = this.onICECandidate.bind(this);
-
         this.peer.addEventListener('track', (event) => {
             this.onStreamsReceived(event.streams);
         })
-            
-        }
-
+    }
 
     private open(){
         logger.info("Connected to server");
@@ -50,17 +46,20 @@ export class ConnectionHandler{
             case 'register-re':
                 this.ownID = pkg.data.id;
                 logger.log("Registered as peer: " + this.ownID);
-                this.onConnection(this);
-            break;
+                this.onConnection();
+                break;
             case 'mediaOffer':
                 this.mediaOffer(pkg.data);
-                return;
+                break;
             case 'mediaAnswer':
                 this.mediaAnswer(pkg.data);
+                break;
             case 'iceCandidate':
                 this.iceCandidate(pkg.data);
+                break;
             case 'error':
                 this.error(pkg.data.message);
+                break;
         }            
     }
 
@@ -69,19 +68,16 @@ export class ConnectionHandler{
     }
 
     private onICECandidate(event : RTCPeerConnectionIceEvent){
-        if (!this.iceSetup && event.candidate !== null){
-            this.iceSetup = true;
-            this.server.send(new SocketPackage('iceCandidate', {candidate : event.candidate}, new AddressLabel(this.ownID, this.receiver)).serialize());
+        if (!this.iceSetupDone && event.candidate !== null){
+            this.iceSetupDone = true;
+            this.server.send(new SocketPackage('iceCandidate', {candidate : event.candidate}, new AddressLabel(this.ownID, this.receiverID)).serialize());
         }
     }
-
-    public onConnection(ch : ConnectionHandler){}
-    public onStreamsReceived(streams : readonly MediaStream[]){}
 
     public async sendMediaOffer(){
         const peerOffer = await this.peer.createOffer();
         await this.peer.setLocalDescription(new RTCSessionDescription(peerOffer));
-        this.server.send(new SocketPackage('mediaOffer', {offer: peerOffer}, new AddressLabel(this.ownID, this.receiver)).serialize());
+        this.server.send(new SocketPackage('mediaOffer', {offer: peerOffer}, new AddressLabel(this.ownID, this.receiverID)).serialize());
     }
 
     private async mediaAnswer(data : any){
@@ -92,33 +88,23 @@ export class ConnectionHandler{
         await this.peer.setRemoteDescription(new RTCSessionDescription(data.offer));
         const peerAnswer = await this.peer.createAnswer();
         await this.peer.setLocalDescription(new RTCSessionDescription(peerAnswer));
-        this.server.send(new SocketPackage('mediaAnswer', {answer: peerAnswer}, new AddressLabel(this.ownID, this.receiver)).serialize());
-        
+        this.server.send(new SocketPackage('mediaAnswer', {answer: peerAnswer}, new AddressLabel(this.ownID, this.receiverID)).serialize());
     }
 
     private async iceCandidate(data : any){
         try {
-            //const candidate = new RTCIceCandidate();
             await this.peer.addIceCandidate(data.candidate);
           } catch (error) {
-              console.log(error);
             this.error(error);
           }
     }
 
     public sendVideo(stream : MediaStream){
-        logger.log("Send Video");
         stream.getTracks().forEach(track => {
             this.peer.addTrack(track, stream);
         });
 
         this.sendMediaOffer();
-
     }
     
 }
-
-const logging = require('webpack/lib/logging/runtime');
-
-
-let logger = logging.getLogger("connection-handler");

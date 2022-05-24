@@ -1,18 +1,14 @@
 const logging = require('webpack/lib/logging/runtime');
-
-
 let logger = logging.getLogger("connection-handler");
-
-
 
 export interface AdrSocket extends WebSocket{
     id : number;
 }
 
 export class AddressLabel{
-    private NOT_SET = -1;
-    public sender : number = this.NOT_SET;
-    public receiver : number = this.NOT_SET;
+    private readonly NOT_SET = -1;
+    public readonly sender : number = this.NOT_SET;
+    public readonly receiver : number = this.NOT_SET;
 
     constructor(sender : number, receiver : number){
         this.sender = sender;
@@ -24,7 +20,6 @@ export class AddressLabel{
     }
 }
 
-
 export class SocketPackage{
     event: string;
     data: any;
@@ -33,31 +28,29 @@ export class SocketPackage{
     constructor(event: string, data?: any, fwdAddr? : AddressLabel) {
         this.event = event;
 
-        if(data != null)
+        if(data !== null)
             this.data = data;
 
-        if(fwdAddr != null)
+        if(fwdAddr !== null)
             this.fwdAddr = fwdAddr;
     }
     
     static deserialize(encrypted: string) : SocketPackage {        
         let object = JSON.parse(encrypted);
-
         logger.group("Deserialize socket package");
         logger.debug(object);
         logger.groupEnd();
-
         return new SocketPackage(object.event, object.data, object.fwdAddr == null ? null : new AddressLabel(object.fwdAddr.sender, object.fwdAddr.receiver));
-
     }
+
     serialize() {
         let object : any = {};
         object.event = this.event;
 
-        if(this.fwdAddr != null)
+        if(this.fwdAddr !== null)
         object.fwdAddr = this.fwdAddr.getData();
 
-        if(this.data != null)
+        if(this.data !== null)
         object.data = this.data;
 
         logger.group("Serialize socket package");
@@ -67,16 +60,6 @@ export class SocketPackage{
         return JSON.stringify(object);
     }
 }
-
-export namespace SocketPackage
-{
-    export enum Type
-    {
-        SocketPackage,
-        ForwardPackage
-    }
-}
-
 
 export class ErrorPackage extends SocketPackage{
     

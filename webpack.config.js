@@ -21,10 +21,6 @@ const serverConfig = {
             },
         ]
     },
-    plugins: [
-        
-         
-    ],
     resolve: {
         extensions: ['.ts', '.js'],
     },
@@ -32,11 +28,10 @@ const serverConfig = {
         filename: 'server.js',
         path: path.resolve(__dirname, 'dist'),
     }
-   
 };
 
 const webConfig = {
-
+    mode: "production",
     target : 'web',
     entry :
     {
@@ -53,12 +48,10 @@ const webConfig = {
         ]
     },
     plugins: [
-       
          new webpack.DllReferencePlugin({
             context: __dirname,
             manifest: require( './dist/library/web_library.json')
           }),
-         
         new HtmlWebpackPlugin({
             title: "Sender",
             filename : "sender/index.html",
@@ -90,6 +83,6 @@ const webConfig = {
 };
 
 module.exports = [
-    
-    webConfig,serverConfig
+    webConfig,
+    serverConfig
 ]

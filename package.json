@@ -2,14 +2,13 @@
   "name": "master-thesis",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/server.js",
   "scripts": {
-    "build": "webpack --mode development --profile ",
+    "build": "webpack --mode development",
     "build-libraries": "webpack --config library.webpack.config.js",
-    "app": "node dist/server.js",
-    "serve": "webpack --mode development&node dist/server.js"
+    "test": "webpack --mode development&node dist/server.js"
   },
-  "author": "",
+  "author": "Felix Bublitz",
   "license": "ISC",
   "devDependencies": {
     "html-webpack-plugin": "^5.5.0",

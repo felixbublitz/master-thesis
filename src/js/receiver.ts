@@ -1,25 +1,19 @@
-import {VideoHandler} from "./video-handler";
-import {ConnectionHandler} from "./connection-handler"
+import {VideoHandler} from "./etc/video-handler";
+import {ConnectionHandler} from "./ws/connection-handler"
 
 class Receiver{
-    readonly videoHandler = new VideoHandler("video");
-    readonly connectionHandler = new ConnectionHandler();
-    readonly SOCKET_ADDR = "ws://127.0.0.1:2222";
-    readonly PEER_ID = 1;
-
+    private readonly WS_ADDR = "ws://127.0.0.1:2222";
+    private readonly videoHandler = new VideoHandler("video");
+    private readonly connectionHandler = new ConnectionHandler();
+   
     constructor(){
-        
-        this.connectionHandler.init(this.SOCKET_ADDR, this.PEER_ID);
-
+        this.connectionHandler.init(this.WS_ADDR, parseInt(prompt('sender id:')));
         this.connectionHandler.onStreamsReceived = this.onStreamsReceived.bind(this);
     }
 
-
     private onStreamsReceived(streams : readonly MediaStream[]){
-        console.log(streams);
-        this.videoHandler.startStream(streams);
+        this.videoHandler.startStreams(streams);
     }
-  
 }
 
 new Receiver();
