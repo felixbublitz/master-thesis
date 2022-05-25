@@ -35,8 +35,7 @@ const webConfig = {
     target : 'web',
     entry :
     {
-        'sender' : './src/js/sender.ts',
-        'receiver' : './src/js/receiver.ts',
+        'app' : './src/js/app.ts',
     },
     module : {
         rules : [
@@ -53,19 +52,10 @@ const webConfig = {
             manifest: require( './dist/library/web_library.json')
           }),
         new HtmlWebpackPlugin({
-            title: "Sender",
-            filename : "sender/index.html",
+            title: "App",
+            filename : "app/index.html",
             template : "src/assets/template.html",
-            chunks : ["sender"],
-            templateParameters: {
-                dll: '../../library/web_library.dll.js',
-              }
-        }),
-        new HtmlWebpackPlugin({
-            title: "Receiver",
-            filename : "receiver/index.html",
-            template : "src/assets/template.html",
-            chunks : ["receiver"],
+            chunks : ["app"],
             templateParameters: {
                 dll: '../../library/web_library.dll.js',
               }

@@ -29,6 +29,5 @@ npm ./dist/server.js
 <h2>Usage</h2>
 
 ```bash
-127.0.0.1/sender # App that initializes the video call
-127.0.0.1/receiver # App that receives the video call
+127.0.0.1/app
 ```

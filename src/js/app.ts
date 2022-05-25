@@ -25,11 +25,17 @@ class Sender{
 
         let peerID = 1;
 
+        this.connectionHandler.onStreamsReceived = this.onStreamsReceived.bind(this);
+
         this.connectionHandler.onConnection = ()=>{
             this.connectionHandler.sendVideo(peerID, this.videoHandler.getStream());
         };
 
-        this.connectionHandler.init(this.WS_ADDR, parseInt(prompt('receiver id:')));
+        this.connectionHandler.init(this.WS_ADDR, parseInt(prompt('peer id:')));
+    }
+
+    private onStreamsReceived(peerID : number, streams : readonly MediaStream[]){
+        this.videoHandler.startStreams(streams);
     }
 }
 

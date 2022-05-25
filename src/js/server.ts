@@ -21,8 +21,7 @@ class Server{
 
     constructor(){
         this.app.use(express.static('./'));
-        this.app.use('/sender', express.static(__dirname + '/sender'));
-        this.app.use('/receiver', express.static(__dirname + '/receiver'));
+        this.app.use('/app', express.static(__dirname + '/app'));
         this.app.use('/library', express.static(__dirname + '/library'));
      
         this.app.listen(this.httpPort, () => {
