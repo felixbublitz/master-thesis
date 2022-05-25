@@ -23,8 +23,10 @@ class Sender{
         };
         await this.videoHandler.startWebcam();
 
+        let peerID = 1;
+
         this.connectionHandler.onConnection = ()=>{
-            this.connectionHandler.sendVideo(this.videoHandler.getStream());
+            this.connectionHandler.sendVideo(peerID, this.videoHandler.getStream());
         };
 
         this.connectionHandler.init(this.WS_ADDR, parseInt(prompt('receiver id:')));

@@ -5,10 +5,54 @@
     <title><%= htmlWebpackPlugin.options.title %></title>
     <script type="text/javascript" src="js/<%= dll %>"></script>
   </head>
-  <body>
+  
+  <body style="text-align: center;">
+    
+    
     <div class="container">
-      <video id="video" class="video" width="1280" height="720" autoplay></video>
-      <canvas class="output_canvas" width="1280px" height="720px"></canvas>
+      <div style="display: inline-block;">
+        <video style="border:1px black solid; " id="video" class="video" width="640" height="480" autoplay></video>
+        <p>Me</p>
+      </div>
+      <div style="display: inline-block;">
+        <video style="border:1px black solid; " id="video" class="video" width="640" height="480" autoplay></video>
+        <p>P1</p>
+      </div>
+      <div style="display: inline-block;">
+        <video style="border:1px black solid; " id="video" class="video" width="640" height="480" autoplay></video>
+        <p>P2</p>
+      </div>
+      <div style="display: inline-block;">
+        <video style="border:1px black solid; " id="video" class="video" width="640" height="480" autoplay></video>
+        <p>P3</p>
+      </div>
+    </div>
+<div>
+      <div style="vertical-align: top;display:inline-block">
+        
+        <p>Peer ID: [nr]</p>
+        <button>call</button>
+      </div>
+      
+      <div style="display:inline-block">
+        <p>Options</p>
+        <p>Send</p>
+        <select id="send">
+          <option value="a">nothing</option>
+          <option value="b">video</option>
+          <option value="c">face mesh</option>
+        </select>
+
+        <p>Reconstruction</p>
+        <select id="reconstruct">
+          <option value="a">disabled</option>
+          <option value="b">original video</option>
+          <option value="c">wireframe</option>
+          <option value="c">3d face</option>
+        </select>
+      </div>
+    </div>
+    
     </div>
   </body>
 </html>

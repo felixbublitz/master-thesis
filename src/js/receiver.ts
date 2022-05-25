@@ -11,7 +11,7 @@ class Receiver{
         this.connectionHandler.onStreamsReceived = this.onStreamsReceived.bind(this);
     }
 
-    private onStreamsReceived(streams : readonly MediaStream[]){
+    private onStreamsReceived(peerID : number, streams : readonly MediaStream[]){
         this.videoHandler.startStreams(streams);
     }
 }
