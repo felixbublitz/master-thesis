@@ -29,5 +29,5 @@ npm ./dist/server.js
 <h2>Usage</h2>
 
 ```bash
-127.0.0.1/app
+127.0.0.1
 ```

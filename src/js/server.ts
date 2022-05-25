@@ -20,8 +20,8 @@ class Server{
     static initClients : number = 0;
 
     constructor(){
-        this.app.use(express.static('./'));
-        this.app.use('/app', express.static(__dirname + '/app'));
+        this.app.use(express.static(__dirname + '/app'));
+
         this.app.use('/library', express.static(__dirname + '/library'));
      
         this.app.listen(this.httpPort, () => {
