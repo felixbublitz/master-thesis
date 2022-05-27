@@ -2,41 +2,79 @@
 import {ConnectionHandler} from "./ws/connection-handler";
 import {VideoHandler} from "./etc/video-handler";
 import {FeatureExtraction} from "./etc/feature-extraction";
+import {NormalizedLandmarkList} from '@mediapipe/face_mesh';
+
 
 class Sender{
-    private readonly videoHandler;
+
+    private videoHandlers : Array<VideoHandler>;
     private readonly featureExtraction;
     private readonly connectionHandler;
     private readonly WS_ADDR = "ws://127.0.0.1:2222";
-    private readonly VIDEO_DOM_ID = "video";
+    private readonly BNT_INIT_CALL_ID= "btn-init-call";
+    private readonly LBL_OWN_ID = "own-id";
     
     constructor(){
-        this.videoHandler = new VideoHandler(this.VIDEO_DOM_ID);
+        this.videoHandlers = new Array<VideoHandler>();
         this.featureExtraction = new FeatureExtraction();
         this.connectionHandler = new ConnectionHandler(); 
+        document.getElementById(this.BNT_INIT_CALL_ID).onclick = this.test.bind(this);
         this.init();       
     }
 
-    private async init(){
-        this.videoHandler.onFrameChanged = (video)=> {
-            this.featureExtraction.getFeatures(video);
-        };
-        await this.videoHandler.startWebcam();
+    public test(){
+        this.connectionHandler.sendVideo(parseInt(prompt('peer id:')), this.videoHandlers[this.connectionHandler.ownID].getStream());
+    }
 
-        let peerID = 1;
+    private async init(){
+
+        this.featureExtraction.onFaceLandmarks = (landmarks : NormalizedLandmarkList[]) => {
+
+        }
+
 
         this.connectionHandler.onStreamsReceived = this.onStreamsReceived.bind(this);
 
-        this.connectionHandler.onConnection = ()=>{
-            this.connectionHandler.sendVideo(peerID, this.videoHandler.getStream());
+        this.connectionHandler.onConnection = ()=>{};
+        this.connectionHandler.onOwnIDReceived = (ownID) => {
+            this.addPeer(ownID, true);
+
+            this.videoHandlers[this.connectionHandler.ownID].onFrameChanged = (video)=> {
+                //this.featureExtraction.getFeatures(video);
+            };
+
+            this.videoHandlers[this.connectionHandler.ownID].startWebcam();
+
         };
 
-        this.connectionHandler.init(this.WS_ADDR, parseInt(prompt('peer id:')));
+        this.connectionHandler.init(this.WS_ADDR);
+
+       
+    }
+
+    private addPeer(peerID : number, self? : boolean){
+        let li = document.createElement("li");
+        let video = document.createElement("video");
+        let p = document.createElement("p");
+
+        video.id = "peer-video-" + peerID;
+        video.width = 480;
+        video.height = 360;
+        video.autoplay = true;
+        p.innerHTML = "Peer " + peerID + (self==true? " [me]" : "");
+
+        li.appendChild(video);
+        li.appendChild(p);
+
+        document.getElementById("peer-videos").appendChild(li);
+        this.videoHandlers[peerID] = new VideoHandler("peer-video-" + peerID);
     }
 
     private onStreamsReceived(peerID : number, streams : readonly MediaStream[]){
-        this.videoHandler.startStreams(streams);
+        console.log("stream received");
+        this.addPeer(peerID);
+        this.videoHandlers[peerID].startStreams(streams);
     }
 }
 
-new Sender();
+let a = new Sender();
