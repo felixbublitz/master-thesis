@@ -1,10 +1,8 @@
-import {FaceMesh, FACEMESH_TESSELATION, InputImage, Results} from '@mediapipe/face_mesh'
+import {FaceMesh, FACEMESH_TESSELATION, InputImage, NormalizedLandmarkList, Results} from '@mediapipe/face_mesh'
 import {drawConnectors} from '@mediapipe/drawing_utils'
 
 export class FeatureExtraction{
     private readonly LIBRARY_FACE_MESH : string =  'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/';
-    private readonly canvasElement : HTMLCanvasElement = <HTMLCanvasElement>document.getElementsByClassName('output_canvas')[0];
-    private readonly canvasCtx = this.canvasElement.getContext('2d');
     private readonly faceMesh;
 
     constructor(){
@@ -26,17 +24,11 @@ export class FeatureExtraction{
       this.faceMesh.initialize();
     }
 
+    public onFaceLandmarks(landmarks : NormalizedLandmarkList[]){};
+
     private onResult(results : Results){
-      this.canvasCtx.save();
-      this.canvasCtx.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
-     
-      if (results.multiFaceLandmarks) {
-        for (const landmarks of results.multiFaceLandmarks) {
-          drawConnectors(this.canvasCtx, landmarks, FACEMESH_TESSELATION,
-                         {color: '#C0C0C070', lineWidth: 1});
-        }
-      }
-      this.canvasCtx.restore();
+      if (results.multiFaceLandmarks)
+      this.onFaceLandmarks(results.multiFaceLandmarks);
   }
 
     public async getFeatures(image : InputImage){
