@@ -1,58 +1,120 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8"/>
-    <title><%= htmlWebpackPlugin.options.title %></title>
-    <script type="text/javascript" src="js/<%= dll %>"></script>
-  </head>
-  
-  <body style="text-align: center;">
-    
-    
-    <div class="container">
-      <div style="display: inline-block;">
-        <video style="border:1px black solid; " id="video" class="video" width="640" height="480" autoplay></video>
-        <p>Me</p>
-      </div>
-      <div style="display: inline-block;">
-        <video style="border:1px black solid; " id="video" class="video" width="640" height="480" autoplay></video>
-        <p>P1</p>
-      </div>
-      <div style="display: inline-block;">
-        <video style="border:1px black solid; " id="video" class="video" width="640" height="480" autoplay></video>
-        <p>P2</p>
-      </div>
-      <div style="display: inline-block;">
-        <video style="border:1px black solid; " id="video" class="video" width="640" height="480" autoplay></video>
-        <p>P3</p>
-      </div>
-    </div>
-<div>
-      <div style="vertical-align: top;display:inline-block">
-        
-        <p>Peer ID: [nr]</p>
-        <button>call</button>
-      </div>
-      
-      <div style="display:inline-block">
-        <p>Options</p>
-        <p>Send</p>
-        <select id="send">
-          <option value="a">nothing</option>
-          <option value="b">video</option>
-          <option value="c">face mesh</option>
-        </select>
 
-        <p>Reconstruction</p>
-        <select id="reconstruct">
-          <option value="a">disabled</option>
-          <option value="b">original video</option>
-          <option value="c">wireframe</option>
-          <option value="c">3d face</option>
-        </select>
-      </div>
-    </div>
+<head>
+  <meta charset="utf-8" />
+  <title>
+    <%= htmlWebpackPlugin.options.title %>
+  </title>
+  <script type="text/javascript" src="js/<%= dll %>"></script>
+  <style>
+    body {
+      text-align: left;
+      margin: 0;
+      text-align: center;
+    }
+
+    #header {
+      background: rgb(46, 46, 46);
+      color: white;
+      padding: 8;
+      margin: 0;
+    }
+
+    button {
+      padding: 4px 8px;
+    }
+
+    #header li {
+      vertical-align: top;
+      padding: 8px 16px;
+      display: inline-block;
+    }
+
+    #header p {
+      margin-bottom: 4px;
+      margin-top: 0;
+    }
+
+    #header select {
+      padding: 4px 8px;
+    }
+
+    #main{
+      margin-top: 4px;
+    }
+
+    #main li{
+      display: inline-block;
+      margin: 0;
+      padding: 0;
+    }
+
+    #main ul{
+      margin:0;
+      padding:0;
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
     
-    </div>
-  </body>
+    #main video{
+      background: rgb(113, 113, 221);
+      border:0;
+      padding:0;
+      display: block;
+    }
+
+    #main li{
+
+    }
+    #main p{
+      background: black;
+      color:white;
+      margin: 0;
+      padding: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <ul id="header">
+    <li>
+      <p>Send</p>
+      <select id="send">
+        <option value="a">nothing</option>
+        <option value="b">video</option>
+        <option value="c">face mesh</option>
+      </select>
+    </li>
+
+    <li style="vertical-align: middle;display:inline-block">
+      <p>Reconstruction</p>
+      <select id="reconstruct">
+        <option value="a">disabled</option>
+        <option value="b">original video</option>
+        <option value="c">wireframe</option>
+        <option value="c">3d face</option>
+      </select>
+    </li>
+
+    <li>
+      <p>action</p>
+      <button id="btn-init-call">init call</button>
+    </li>
+  </ul>
+
+  <div id="main">
+    <ul id="peer-videos">
+    </ul>
+
+  
+  </div>
+
+
+  </div>
+</body>
+
 </html>
