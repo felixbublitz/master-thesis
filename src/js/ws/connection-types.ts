@@ -21,12 +21,14 @@ export class AddressLabel{
 }
 
 export class SocketPackage{
-    event: string;
-    data: any;
-    fwdAddr : AddressLabel;
+    readonly event: string;
+    readonly data: any;
+    readonly fwdAddr : AddressLabel;
+    readonly id : string;
 
-    constructor(event: string, data?: any, fwdAddr? : AddressLabel) {
+    constructor(event: string, data?: any, fwdAddr? : AddressLabel, id? : string) {
         this.event = event;
+        this.id = id == null ? ""+Date.now() : id;
 
         if(data !== null)
             this.data = data;
@@ -40,17 +42,29 @@ export class SocketPackage{
         logger.group("Deserialize socket package");
         logger.debug(object);
         logger.groupEnd();
-        return new SocketPackage(object.event, object.data, object.fwdAddr == null ? null : new AddressLabel(object.fwdAddr.sender, object.fwdAddr.receiver));
+        return new SocketPackage(object.event, object.data, object.fwdAddr == null ? null : new AddressLabel(object.fwdAddr.sender, object.fwdAddr.receiver), object.id);
+    }
+
+    public reply(data : any) : SocketPackage {
+        let addr = null;
+
+        if(this.fwdAddr != null)
+            addr = new AddressLabel(this.fwdAddr.receiver, this.fwdAddr.sender);
+
+        let reply = new SocketPackage(this.event + "_re", data, addr, this.id + "_re");
+        return reply;
     }
 
     serialize() {
         let object : any = {};
         object.event = this.event;
 
-        if(this.fwdAddr !== null)
+        object.id = this.id;
+
+        if(this.fwdAddr != null)
         object.fwdAddr = this.fwdAddr.getData();
 
-        if(this.data !== null)
+        if(this.data != null)
         object.data = this.data;
 
         logger.group("Serialize socket package");
