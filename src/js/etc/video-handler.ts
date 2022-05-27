@@ -35,9 +35,11 @@ export class VideoHandler{
                         this.stream = stream;
                         this.domElement.srcObject = stream;
                         resolve();
+                        return;
                         
                     })["catch"]((error)=>{
                         reject();
+                        return;
                     });
             }
         })

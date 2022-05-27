@@ -21,7 +21,7 @@ class Server{
 
     constructor(){
         this.app.use(express.static(__dirname + '/app'));
-
+        this.app.use('/app', express.static(__dirname + '/app'));
         this.app.use('/library', express.static(__dirname + '/library'));
      
         this.app.listen(this.httpPort, () => {
@@ -35,15 +35,15 @@ class Server{
     private connection(peer : WSWebSocket){
         logger.info("Peer connected");
         peer.on('message', (message : MessageEvent)=>{
-            this.receive(message.data.toString(), <any>peer);
+            this.receive(message.toString(), <any>peer);
         });  
     }
 
     private receive(message : string, peer : AdrSocket){
         let pkg = SocketPackage.deserialize(message);
-        logger.info("Received event: " + pkg.event + " from " + peer.id);
+        logger.info("Received event: " + pkg.event + " from " + peer.id + " [" + pkg.id + "]");
 
-        if(pkg.fwdAddr !== null){
+        if(pkg.fwdAddr != null){
             this.forwardPackage(pkg);
             return;
         }
@@ -51,8 +51,11 @@ class Server{
         switch(pkg.event){
             case 'register':
                 peer.id = Server.initClients++;
-                peer.send(new SocketPackage('register-re', {id : peer.id}).serialize());
+                peer.send(pkg.reply({id : peer.id}).serialize());
                 logger.info('Socket ' + peer.id + " connected");
+                break;
+            case 'peer_exists':
+                peer.send(pkg.reply({'exists' : this.getSocket(pkg.data.peerID) == null ? false : true}).serialize())
                 break;
         }
     }
