@@ -20,6 +20,7 @@ export class AddressLabel{
     }
 }
 
+
 export class SocketPackage{
     readonly event: string;
     readonly data: any;
@@ -52,6 +53,16 @@ export class SocketPackage{
             addr = new AddressLabel(this.fwdAddr.receiver, this.fwdAddr.sender);
 
         let reply = new SocketPackage(this.event + "_re", data, addr, this.id + "_re");
+        return reply;
+    }
+
+    public replyError(message : String) : SocketPackage {
+        let addr = null;
+
+        if(this.fwdAddr != null)
+            addr = new AddressLabel(this.fwdAddr.receiver, this.fwdAddr.sender);
+
+        let reply = new SocketPackage("error_re", {message : message}, addr, this.id + "_re");
         return reply;
     }
 
