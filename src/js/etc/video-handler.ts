@@ -22,6 +22,11 @@ export class VideoHandler{
         return this.stream;
     }
 
+    public stopStreams(){
+        this.domElement.src = '';
+        //this.domElement.load();
+    }
+
     public startStreams(streams : readonly MediaStream[]){
         const [stream] = streams;
         this.domElement.srcObject = stream;
