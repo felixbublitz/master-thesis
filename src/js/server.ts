@@ -12,12 +12,11 @@ logging.configureDefaultLogger({
 
 let logger = logging.getLogger("Server");
 
-
 class Server{
     private readonly httpPort : number = 80;
     private readonly wsPort : number = 2222;
-    private app = express();
-    private server : WebSocketServer;
+    private readonly app = express();
+    private readonly server : WebSocketServer;
     private readonly peers : Array<CallPeer>
 
     constructor(){
@@ -30,32 +29,30 @@ class Server{
         })
 
         this.server = new WebSocketServer({ port : this.wsPort });
-        this.server.on('connection', this.connection.bind(this));
+        this.server.on('connection', this.onConnection.bind(this));
         this.peers = new Array<CallPeer>();
     }
     
-    private connection(socket : WSWebSocket){
+    private onConnection(socket : WSWebSocket){
         logger.info("Peer connected");
+
         let peer = new CallPeer(socket);
         this.peers.push(peer);
         
         socket.on('message', (message : MessageEvent)=>{
-            console.log(message.toString());
             let reply = this.onPackage(SocketPackage.deserialize(message.toString()), peer);
             if(reply != null)
                 peer.send(reply);
-            
         });  
+
         socket.on('close', ()=>{
-            this.close(peer);
+            this.onClose(peer);
         });  
-        
     }
 
-    private close(peer : CallPeer){
+    private onClose(peer : CallPeer){
         peer.destroy();
         this.peers.splice(this.peers.indexOf(peer), 1);
-        console.log(this.peers);
     }
 
     private onPackage(pkg : SocketPackage, peer : CallPeer) : SocketPackage{
@@ -89,6 +86,7 @@ class Server{
 
             case 'peer_exists':
                 return pkg.reply({'exists' : this.getPeer(pkg.data.peerID) == null ? false : true});
+
             case 'change_mode':
                 if(peer.callSession == null)
                     return pkg.replyError("you have to be in a call to change the mode");
@@ -100,13 +98,10 @@ class Server{
     }
 
     private joinCall(caller : CallPeer, callee : CallPeer){
-
         if(caller.callSession == null && callee.callSession == null){
             let session = new CallSession();
             session.join(caller);
             session.join(callee);
-
-            //session.on('settingschanged', this.CallSessionSettingsChanged);
             logger.info("Connected peers");
             logger.info(session);
             return;
@@ -127,14 +122,12 @@ class Server{
     }
 
     private forwardPackage(pkg : SocketPackage){
-        logger.info("Forward event: " + pkg.event + " to: " + pkg.fwdAddr.receiver);
         let receiver = this.getPeer(pkg.fwdAddr.receiver);
         if(receiver === null){
             logger.error('Socket ' + pkg.fwdAddr.receiver + " not exists!");
-            return;
+        }else{
+            receiver.send(pkg);
         }
-
-        this.getPeer(pkg.fwdAddr.receiver).send(pkg);
     }
 
     private getPeer(id : number) : CallPeer{

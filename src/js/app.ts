@@ -1,45 +1,41 @@
-
 import {ConnectionHandler} from "./ws/connection-handler";
 import {VideoHandler} from "./etc/video-handler";
-import {FeatureExtraction} from "./etc/feature-extraction";
-import {NormalizedLandmarkList} from '@mediapipe/face_mesh';
-import { CallMode } from "./ws/connection-types";
+import { DomElement } from "./ws/html-types";
 
-
-class Sender{
-
-    private videoHandlers : Array<VideoHandler>;
-    private readonly featureExtraction;
+class App{
+    private readonly videoHandlers : Array<VideoHandler>;
     private readonly connectionHandler;
-    private readonly WS_ADDR = "ws://127.0.0.1:2222";
-    private readonly BNT_INIT_CALL_ID= "btn-init-call";
-    private readonly LBL_OWN_ID = "own-id";
-    private readonly SLC_VIDEO_MODE = "video-mode";
-    
+    private readonly wsAddr = "ws://127.0.0.1:2222";
+    private readonly textPeer = "Peer";
+    private readonly textMe = "[me]";
+    private readonly videoWidth = 480;
+    private readonly videoHeight = 320;
     
     constructor(){
         this.videoHandlers = new Array<VideoHandler>();
-        this.featureExtraction = new FeatureExtraction();
         this.connectionHandler = new ConnectionHandler(); 
-        document.getElementById(this.BNT_INIT_CALL_ID).onclick = this.call.bind(this);
-        document.getElementById(this.SLC_VIDEO_MODE).onchange = ((ev : Event)=>{
-            this.connectionHandler.changeTransmissionMode(<CallMode>parseInt((<HTMLSelectElement>document.getElementById(this.SLC_VIDEO_MODE)).value));
+
+        document.getElementById(DomElement.BT_INIT_CALL).onclick = (()=>{
+            this.connectionHandler.call(parseInt(prompt('peer id:')));
         }).bind(this);
+
+        document.getElementById(DomElement.SL_VIDEO_MODE).onchange = ((ev : Event)=>{
+            this.connectionHandler.changeTransmissionMode(parseInt((<HTMLSelectElement>document.getElementById(DomElement.SL_VIDEO_MODE)).value));
+        }).bind(this);
+
         this.init();       
     }
 
-    public call(){
-        this.connectionHandler.call(parseInt(prompt('peer id:')));
-    }
-
     private async init(){
+        this.connectionHandler.onStreamsReceived = ((peerID : number, streams : readonly MediaStream[]) => {
+            console.log("stream received");
+            this.videoHandlers[peerID].startStreams(streams);
+        }).bind(this);
 
-        this.featureExtraction.onFaceLandmarks = (landmarks : NormalizedLandmarkList[]) => {
-        }
-
-
-        this.connectionHandler.onStreamsReceived = this.onStreamsReceived.bind(this);
-        this.connectionHandler.onStreamStopped = this.onStreamStopped.bind(this);
+        this.connectionHandler.onStreamStopped = ((peerID : number) => {
+            console.log("stopp " + peerID);
+            this.videoHandlers[peerID].stopStreams();
+        }).bind(this);
         
         this.connectionHandler.onPeerConnected = ((peerID : number) => {
             this.addPeer(peerID);
@@ -49,60 +45,39 @@ class Sender{
             this.removePeer(peerID);
         }).bind(this);
 
-
         this.connectionHandler.requestWebcamStream = ()=>{
             return this.videoHandlers[this.connectionHandler.ownID].getStream();
-        }
-
-        this.connectionHandler.onConnection = ()=>{};
-        this.connectionHandler.onOwnIDReceived = (ownID) => {
-            this.addPeer(ownID, true);
-
-            this.videoHandlers[this.connectionHandler.ownID].onFrameChanged = (video)=> {
-                //this.featureExtraction.getFeatures(video);
-            };
-
-            this.videoHandlers[this.connectionHandler.ownID].startWebcam();
-
         };
 
-        this.connectionHandler.init(this.WS_ADDR);
+        this.connectionHandler.onIDReceived = (ownID) => {
+            this.addPeer(ownID, true);
+            this.videoHandlers[this.connectionHandler.ownID].startWebcam();
+        };
 
-       
+        this.connectionHandler.init(this.wsAddr);
     }
 
     private addPeer(peerID : number, self? : boolean){
         let li = document.createElement("li");
         let video = document.createElement("video");
         let p = document.createElement("p");
-
-        video.id = "peer-video-" + peerID;
-        video.width = 480;
-        video.height = 360;
+        video.id = DomElement.PREFIX_PEER_VIDEO + peerID;
+        video.width = this.videoWidth;
+        video.height = this.videoHeight;
         video.autoplay = true;
-        p.innerHTML = "Peer " + peerID + (self==true? " [me]" : "");
-        li.id = "peer-item-" + peerID;
-
+        p.innerHTML = `${this.textPeer} ${peerID} ${self==true? this.textMe : ""}`;
+        li.id = DomElement.PREFIX_PEER_ITEM + peerID;
         li.appendChild(video);
         li.appendChild(p);
 
-        document.getElementById("peer-videos").appendChild(li);
-        this.videoHandlers[peerID] = new VideoHandler("peer-video-" + peerID);
+        document.getElementById(DomElement.UL_PEER_ITEMS).appendChild(li);
+        this.videoHandlers[peerID] = new VideoHandler(DomElement.PREFIX_PEER_VIDEO + peerID);
     }
 
     private removePeer(peerID : number, self? : boolean){
-        document.getElementById("peer-item-" + peerID).remove();
+        document.getElementById(DomElement.PREFIX_PEER_ITEM + peerID).remove();
     }
 
-    private onStreamsReceived(peerID : number, streams : readonly MediaStream[]){
-        console.log("stream received");
-        this.videoHandlers[peerID].startStreams(streams);
-    }
-
-    private onStreamStopped(peerID : number){
-        console.log("stopp " + peerID);
-        this.videoHandlers[peerID].stopStreams();
-    }
 }
 
-let a = new Sender();
+let app = new App();

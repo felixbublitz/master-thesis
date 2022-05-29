@@ -3,16 +3,14 @@ import { AddressLabel, AdrSocket, CallMode, SocketPackage } from "./connection-t
 const logging = require('webpack/lib/logging/runtime');
 let logger = logging.getLogger("connection-handler");
 
-
 export class ConnectionHandler{
     private server : WebSocket;
-    public ownID : number;
-    private iceSetupDone = false;
-    private readonly ICE_SERVERS = [{urls: "stun:stun.stunprotocol.org"}];
-    private peers : Array<RTCPeerConnection> = [];
+    public readonly ownID : number;
+    private readonly iceServers = [{urls: "stun:stun.stunprotocol.org"}];
+    private readonly peers : Array<RTCPeerConnection> = [];
 
-    public onConnection(peerID : number){}
-    public onOwnIDReceived(ownID : number){};
+
+    public onIDReceived(ownID : number){};
     public onStreamsReceived(peerID : number, streams : readonly MediaStream[]){};
     public onStreamStopped(peerID : number){};
     public onPeerConnected(peerID : number){};
@@ -20,7 +18,7 @@ export class ConnectionHandler{
 
     public init(addr : string){
         this.server = new WebSocket(addr); 
-        this.server.onopen = this.open.bind(this);
+        this.server.onopen = this.onConnection.bind(this);
         this.server.onerror = this.error.bind(this);
         this.server.onmessage = (ev) => {
             let pkg = SocketPackage.deserialize(ev.data.toString());
@@ -33,14 +31,11 @@ export class ConnectionHandler{
         throw("stream not available");
     }
 
-    private open(){
-        logger.info("Connected to server");
-        
+    private onConnection(){       
         this.AwaitReply(new SocketPackage('get_id')).then(
            (function(pkg : SocketPackage){
                 this.ownID = pkg.data.id;
-                this.onOwnIDReceived(pkg.data.id);
-                logger.log("Registered as peer: " + this.ownID);
+                this.onIDReceived(pkg.data.id);
             }.bind(this)),
             (function(){
                 this.error("internal server error");
@@ -49,7 +44,6 @@ export class ConnectionHandler{
     }
 
     private async AwaitReply(original_pck : SocketPackage) : Promise<SocketPackage>{
-        
         return new Promise((resolve, reject) => {
             let timeout = setTimeout((function(){
                 this.server.removeEventListener('message', callback, false);
@@ -69,7 +63,6 @@ export class ConnectionHandler{
                         reject(reply_pkg.data.message);
                     else
                         resolve(reply_pkg);
-                    
                     return;
                 }
             }).bind(this);
@@ -83,12 +76,10 @@ export class ConnectionHandler{
    
     public async call(peerID : number) : Promise<void>{
         return new Promise((resolve, reject)=>{
-
             if(peerID == this.ownID){
                 reject('illegal peer id');
                 return;
             }
-    
             this.AwaitReply(new SocketPackage('call', {peerID : peerID})).then((function(pkg : SocketPackage){     
                 resolve();
             }).bind(this), (error)=>{
@@ -108,7 +99,7 @@ export class ConnectionHandler{
     }
 
     private createPeer(peerID : number){
-        let peer = new RTCPeerConnection({iceServers : this.ICE_SERVERS});
+        let peer = new RTCPeerConnection({iceServers : this.iceServers});
         peer.onicecandidate = (ev) => this.onICECandidate.bind(this)(peerID, ev);
         peer.ontrack = (ev) => this.onStreamsReceived.bind(this)(peerID, ev.streams);
         peer.onnegotiationneeded = () => this.onNegotiationNeeded.bind(this)(peerID);
@@ -119,7 +110,6 @@ export class ConnectionHandler{
     private startTransmission(peerID : number, mode : CallMode){
         if(this.peers[peerID] == null)
             this.peers[peerID] = this.createPeer(peerID);
-        
 
         switch(mode){
             case CallMode.None:
@@ -154,7 +144,6 @@ export class ConnectionHandler{
         this.AwaitReply(new SocketPackage('offer', {peerID: this.ownID, offer: peerOffer}, new AddressLabel(this.ownID, peerID))).then((async function(pkg : SocketPackage){
             console.log(pkg.data.answer);
             await this.peers[peerID].setRemoteDescription(new RTCSessionDescription(pkg.data.answer));
-            this.onConnection(peerID);
         }).bind(this));
     }
     
@@ -172,7 +161,6 @@ export class ConnectionHandler{
                 this.error(pkg.data.message);
                 break;
             case 'start_transmission':
-   
                 this.startTransmission(pkg.data.peerID, pkg.data.mode);
                 break;
             case 'stop_transmission':
@@ -188,18 +176,12 @@ export class ConnectionHandler{
         this.onPeerDisconnected(peerID);
     }
 
-    private peerModeUpdated(pkg : SocketPackage, peer : AdrSocket){
-
-        
-    }
-
     private error(message : string){
         logger.error(message);
     }
 
     private onICECandidate(peerID : number, event : RTCPeerConnectionIceEvent){
         if (event.candidate !== null){
-            this.iceSetupDone = true;
             this.server.send(new SocketPackage('remoteIceCandidate', {peerID : this.ownID, candidate : event.candidate}, new AddressLabel(this.ownID, peerID)).serialize());
         }
     }
