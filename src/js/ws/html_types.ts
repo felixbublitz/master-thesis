@@ -3,5 +3,6 @@ export class DomElement{
     static SL_VIDEO_MODE = "video-mode";
     static UL_PEER_ITEMS = "peer-videos";
     static PREFIX_PEER_ITEM = "peer-item-";
+    static PREFIX_PEER_STATS = "peer-stats-";
     static PREFIX_PEER_VIDEO = "peer-video-";
 }

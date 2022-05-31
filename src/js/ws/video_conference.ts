@@ -44,6 +44,11 @@ export class VideoConference{
 
     }
 
+    get peers() : RTCPeerConnection[]{
+        return this.connectionHandler.getPeers();
+    }
+
+
     private onEvent(ev : string, data : any){
         switch(ev){
             case 'start_transmission':

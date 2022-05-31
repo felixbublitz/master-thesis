@@ -21,6 +21,10 @@ export class ConnectionHandler{
         this.server.onmessage = (ev) => {this.onMessage(ev)};
     }
 
+    getPeers(){
+        return this.peers;
+    }
+
     get ownID() : number{
         return this.private_ownID;
     }
@@ -101,6 +105,11 @@ export class ConnectionHandler{
             this.server.addEventListener('message', callback);
             this.send(original_pck);
         })
+    }
+
+    getRTCStats(peerId : number){
+        if(this.peers[peerId] != null)
+        return this.peers[peerId].getStats();
     }
     
     removeRTCPeer(peerID : number){
