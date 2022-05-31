@@ -1,81 +1,101 @@
-import {ConnectionHandler} from "./ws/connection-handler";
-import {VideoHandler} from "./etc/video-handler";
-import { DomElement } from "./ws/html-types";
+import {VideoHandler} from "./etc/video_handler";
+import { DomElement } from "./ws/html_types";
+import { FeatureExtraction } from "./etc/feature_extraction";
+import { Data, VideoConference } from "./ws/video_conference";
 
 class App{
     private readonly videoHandlers : Array<VideoHandler>;
-    private readonly connectionHandler;
+    private readonly featureExtraction;
+    private readonly videoConference;
     private readonly wsAddr = "ws://127.0.0.1:2222";
     private readonly textPeer = "Peer";
     private readonly textMe = "[me]";
     private readonly videoWidth = 480;
-    private readonly videoHeight = 320;
+    private readonly videoHeight = 360;
     
     constructor(){
         this.videoHandlers = new Array<VideoHandler>();
-        this.connectionHandler = new ConnectionHandler(); 
+        this.featureExtraction = new FeatureExtraction();
+        this.videoConference = new VideoConference(this.wsAddr);
+
+        this.featureExtraction.onFaceLandmarks = (landmark)=>{
+
+        }
+
+        this.videoConference.onPeerConnected = ((peerId : number) => {
+            console.log("add peer: " + peerId)
+            this.addPeer(peerId);
+        });
+
+        this.videoConference.onPeerDisconnected = ((peerId : number) => {
+            this.removePeer(peerId);
+        });
+
+        this.videoConference.onVideoRequest = ()=>{
+            return this.videoHandlers[this.videoConference.peerId].getStream();
+        }
+
+        this.videoConference.onPeerData = ((peerId : number, type : Data, data : any) => {
+            switch(type){
+                case Data.VIDEO_START:
+                    this.videoHandlers[peerId].startStreams(data)
+                    console.info("stream received from: " + peerId);
+                    break;
+
+                case Data.VIDEO_END:
+                    console.info("stream stopped from: " + peerId);
+                    this.videoHandlers[peerId].stopStreams();
+                    break;
+                default:
+
+            }
+        })
+
+
+
+
+        this.videoConference.onConnected = (async () => {
+            this.addPeer(this.videoConference.peerId, true);
+            await this.videoHandlers[this.videoConference.peerId].startWebcam();
+        })
+
 
         document.getElementById(DomElement.BT_INIT_CALL).onclick = (()=>{
-            this.connectionHandler.call(parseInt(prompt('peer id:')));
-        }).bind(this);
+            this.videoConference.call(parseInt(prompt('peer id:')));
+        })
 
         document.getElementById(DomElement.SL_VIDEO_MODE).onchange = ((ev : Event)=>{
-            this.connectionHandler.changeTransmissionMode(parseInt((<HTMLSelectElement>document.getElementById(DomElement.SL_VIDEO_MODE)).value));
-        }).bind(this);
+            this.videoConference.changeTransmissionMode(parseInt((document.getElementById(DomElement.SL_VIDEO_MODE) as HTMLSelectElement).value));
+        })
 
         this.init();       
     }
 
     private async init(){
-        this.connectionHandler.onStreamsReceived = ((peerID : number, streams : readonly MediaStream[]) => {
-            console.log("stream received");
-            this.videoHandlers[peerID].startStreams(streams);
-        }).bind(this);
-
-        this.connectionHandler.onStreamStopped = ((peerID : number) => {
-            console.log("stopp " + peerID);
-            this.videoHandlers[peerID].stopStreams();
-        }).bind(this);
         
-        this.connectionHandler.onPeerConnected = ((peerID : number) => {
-            this.addPeer(peerID);
-        }).bind(this);
-
-        this.connectionHandler.onPeerDisconnected = ((peerID : number) => {
-            this.removePeer(peerID);
-        }).bind(this);
-
-        this.connectionHandler.requestWebcamStream = ()=>{
-            return this.videoHandlers[this.connectionHandler.ownID].getStream();
-        };
-
-        this.connectionHandler.onIDReceived = (ownID) => {
-            this.addPeer(ownID, true);
-            this.videoHandlers[this.connectionHandler.ownID].startWebcam();
-        };
-
-        this.connectionHandler.init(this.wsAddr);
     }
 
-    private addPeer(peerID : number, self? : boolean){
+  
+
+    private addPeer(peerId : number, self? : boolean){
         let li = document.createElement("li");
         let video = document.createElement("video");
         let p = document.createElement("p");
-        video.id = DomElement.PREFIX_PEER_VIDEO + peerID;
+        video.id = DomElement.PREFIX_PEER_VIDEO + peerId;
         video.width = this.videoWidth;
         video.height = this.videoHeight;
         video.autoplay = true;
-        p.innerHTML = `${this.textPeer} ${peerID} ${self==true? this.textMe : ""}`;
-        li.id = DomElement.PREFIX_PEER_ITEM + peerID;
+        p.innerHTML = `${this.textPeer} ${peerId} ${self==true? this.textMe : ""}`;
+        li.id = DomElement.PREFIX_PEER_ITEM + peerId;
         li.appendChild(video);
         li.appendChild(p);
 
         document.getElementById(DomElement.UL_PEER_ITEMS).appendChild(li);
-        this.videoHandlers[peerID] = new VideoHandler(DomElement.PREFIX_PEER_VIDEO + peerID);
+        this.videoHandlers[peerId] = new VideoHandler(DomElement.PREFIX_PEER_VIDEO + peerId);
     }
 
-    private removePeer(peerID : number, self? : boolean){
-        document.getElementById(DomElement.PREFIX_PEER_ITEM + peerID).remove();
+    private removePeer(peerId : number){
+        document.getElementById(DomElement.PREFIX_PEER_ITEM + peerId).remove();
     }
 
 }

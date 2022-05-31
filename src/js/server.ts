@@ -1,20 +1,13 @@
 import {WebSocket as WSWebSocket, WebSocketServer, MessageEvent} from "ws";
-import {SocketPackage} from "./ws/connection-types";
-import { CallPeer, CallSession } from "./ws/server-types";
+import {SocketPackage} from "./ws/connection_types";
+import { CallPeer, CallSession } from "./ws/server_types";
 
 const express = require('express');
 const logging = require('webpack/lib/logging/runtime');
 
-logging.configureDefaultLogger({
-    level: 'debug',
-    debug: true,
-  });
-
-let logger = logging.getLogger("Server");
-
 class Server{
-    private readonly httpPort : number = 80;
-    private readonly wsPort : number = 2222;
+    private readonly httpPort = 80;
+    private readonly wsPort = 2222;
     private readonly app = express();
     private readonly server : WebSocketServer;
     private readonly peers : Array<CallPeer>
@@ -24,25 +17,22 @@ class Server{
         this.app.use('/app', express.static(__dirname + '/app'));
         this.app.use('/library', express.static(__dirname + '/library'));
      
-        this.app.listen(this.httpPort, () => {
-            logger.log('App listening on port ${this.port}')
-        })
+        this.app.listen(this.httpPort, () => {})
 
         this.server = new WebSocketServer({ port : this.wsPort });
-        this.server.on('connection', this.onConnection.bind(this));
+        this.server.on('connection', (socket) => {this.onConnection(socket)});
         this.peers = new Array<CallPeer>();
     }
     
     private onConnection(socket : WSWebSocket){
-        logger.info("Peer connected");
-
         let peer = new CallPeer(socket);
         this.peers.push(peer);
+
+        console.info('Peer connected as: ' + peer.id);
         
-        socket.on('message', (message : MessageEvent)=>{
+        socket.on('message', (message)=>{
             let reply = this.onPackage(SocketPackage.deserialize(message.toString()), peer);
-            if(reply != null)
-                peer.send(reply);
+            if(reply != null) peer.send(reply);
         });  
 
         socket.on('close', ()=>{
@@ -56,7 +46,7 @@ class Server{
     }
 
     private onPackage(pkg : SocketPackage, peer : CallPeer) : SocketPackage{
-        logger.info("Received event: " + pkg.event + " from " + peer.id + " [" + pkg.id + "]");
+        console.info("Received event: " + pkg.event + " from peer " + peer.id);
 
         if(pkg.fwdAddr != null){
             this.forwardPackage(pkg);
@@ -65,18 +55,16 @@ class Server{
 
         switch(pkg.event){
             case 'get_id':
-                logger.info('Socket ' + peer.id + " connected");
                 return pkg.reply({id : peer.id});
 
             case 'call':
-                let remote = this.getPeer(pkg.data.peerID);
+                let remote = this.getPeer(pkg.data.peerId);
                 if(remote == null){
                     return pkg.replyError("peer does not exist");
                 }
                 
-                if(remote == peer){
-                    return pkg.replyError("peer id is own id");
-                }
+                if(remote == peer) return pkg.replyError("peer id is own id");
+
                 try{
                     this.joinCall(peer, remote);
                 }catch(e){
@@ -85,13 +73,15 @@ class Server{
                 break;
 
             case 'peer_exists':
-                return pkg.reply({'exists' : this.getPeer(pkg.data.peerID) == null ? false : true});
+                return pkg.reply({'exists' : this.getPeer(pkg.data.peerId) == null ? false : true});
 
             case 'change_mode':
-                if(peer.callSession == null)
-                    return pkg.replyError("you have to be in a call to change the mode");
+                if(peer.callSession == null) return pkg.replyError("you have to be in a call to change the mode");
                 peer.changeMode(pkg.data.mode);
                 break;
+
+            default:
+
         }
 
         return pkg.replyOK();
@@ -102,16 +92,12 @@ class Server{
             let session = new CallSession();
             session.join(caller);
             session.join(callee);
-            logger.info("Connected peers");
-            logger.info(session);
             return;
         }
 
-        if(caller.callSession == callee.callSession)
-            throw("Peers already connected");
+        if(caller.callSession == callee.callSession) throw(new Error("Peers already connected"));
 
-        if(caller.callSession != null && callee.callSession != null)
-            throw("Peers are in seperate calls");
+        if(caller.callSession != null && callee.callSession != null) throw(new Error("Peers are in seperate calls"));
 
         let unconnectedPeer = caller.callSession == null ? caller : callee;
         let connectedPeer = caller.callSession != null ? caller : callee;
@@ -123,22 +109,15 @@ class Server{
 
     private forwardPackage(pkg : SocketPackage){
         let receiver = this.getPeer(pkg.fwdAddr.receiver);
-        if(receiver === null){
-            logger.error('Socket ' + pkg.fwdAddr.receiver + " not exists!");
-        }else{
-            receiver.send(pkg);
-        }
+        if(receiver == null) throw(new Error('Socket ' + pkg.fwdAddr.receiver + " not exists!"));
+        else receiver.send(pkg);
     }
 
     private getPeer(id : number) : CallPeer{
-        let out = null;
-        this.peers.forEach((peer : CallPeer)=>{
-            if(peer.id === id){
-                out = peer;
-            }
-        });
-
-        return out;
+        for(const peer of this.peers){
+            if(peer.id === id) return peer;
+        }
+        return null;
     }
 }
 
