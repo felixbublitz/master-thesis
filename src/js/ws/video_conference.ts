@@ -25,7 +25,7 @@ export class VideoConference{
         this.connectionHandler = new ConnectionHandler(); 
         
         this.connectionHandler.onStreamsReceived = (peerId,  streams) => {
-            this.onPeerData(peerId, Data.VIDEO_START, streams)
+            this.onPeerData(peerId, Data.VIDEO_START, streams[0])
         };
 
         this.connectionHandler.onStreamStopped = (peerId : number) => {

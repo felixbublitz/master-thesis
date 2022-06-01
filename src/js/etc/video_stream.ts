@@ -1,39 +1,19 @@
-export class VideoHandler{
-    private readonly domElement : HTMLVideoElement;
+export class VideoStream{
     private stream : MediaStream;
 
-    constructor(domIdentifier: string){
-        this.domElement = document.getElementById(domIdentifier) as HTMLVideoElement;
-        this.domElement.onloadeddata = () => {this.loaded};
-    }
-
-    private loaded(this: VideoHandler, ev : Event){
+    constructor(){
         window.requestAnimationFrame(()=>{this.frameChanged});
     }
 
     private frameChanged(){
-        this.onFrameChanged(this.domElement);
+        this.onFrameChanged();
         window.requestAnimationFrame(()=>{this.frameChanged});
     }
 
-    onFrameChanged(video : HTMLVideoElement){};
+    onFrameChanged(){};
 
     getStream() : MediaStream{
         return this.stream;
-    }
-
-    stopStreams(){
-        this.domElement.pause();
-        this.domElement.removeAttribute('src');
-        window.setTimeout(() => {
-            this.domElement.load();
-        }, (50));
-        
-    }
-
-    startStreams(streams : readonly MediaStream[]){
-        const [stream] = streams;
-        this.domElement.srcObject = stream;
     }
 
     async startWebcam() : Promise<void>{
@@ -42,7 +22,6 @@ export class VideoHandler{
                 navigator.mediaDevices.getUserMedia({video : true}).then(
                     (stream)=>{
                         this.stream = stream;
-                        this.domElement.srcObject = stream;
                         resolve();
                         return;
                         
