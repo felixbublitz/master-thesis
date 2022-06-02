@@ -1,4 +1,8 @@
+import { StatSet, StatTuple } from "../etc/stats";
 import { AddressLabel, AdrSocket, CallMode, SocketPackage } from "./connection_types";
+
+const BIT_TO_BYTE = 0.125;
+
 
 export class ConnectionHandler{
     private server : WebSocket;
@@ -8,7 +12,7 @@ export class ConnectionHandler{
     private readonly peers : Array<RTCPeerConnection> = [];
 
     onIDReceived(ownID : number){};
-    onStreamsReceived(peerId : number, streams : readonly MediaStream[]){};
+    onStreamsReceived(peerId : number, streams : readonly MediaStream[], peer : RTCPeerConnection, statsKey : string){};
     onStreamStopped(peerId : number){};
     onPeerConnected(peerId : number){};
     onPeerDisconnected(peerId : number){};
@@ -107,9 +111,40 @@ export class ConnectionHandler{
         })
     }
 
-    getRTCStats(peerId : number){
-        if(this.peers[peerId] != null)
-        return this.peers[peerId].getStats();
+    async getStats(peerId : number) : Promise<StatSet>{
+        return new Promise(async (resolve, reject) => {
+
+            if(this.peers[peerId] == null){
+                reject('peer does not exist');
+                return;
+            }
+
+            let stats = await this.peers[peerId].getStats();
+            let set = new StatSet();
+            let bitrate = 0;
+            let rtt = 0;
+            let bytesPerFrame = 0;
+            
+            stats.forEach(element => {
+                if(bitrate == 0 && element.type == "candidate-pair" && element.nominated == true){
+                    console.log(element);
+                    bitrate = element.availableOutgoingBitrate;//element.availableIncomingBitrate; wieso nicht vorhanden???
+                    rtt = element.currentRoundTripTime;
+                }
+                if(bytesPerFrame == 0 && element.type == 'inbound-rtp'){
+                    console.log(element);
+                    bytesPerFrame = element.bytesReceived/element.framesDecoded;
+                }
+               
+            });
+
+            if(bitrate != null && rtt != null && bytesPerFrame != null)
+                set.add('transmissionTime', new StatTuple(rtt + bytesPerFrame/(bitrate*BIT_TO_BYTE), 1));
+
+            console.log(set);
+            resolve(set);
+
+        })
     }
     
     removeRTCPeer(peerID : number){
@@ -120,7 +155,17 @@ export class ConnectionHandler{
     createRTCPeer(peerId : number){
         const peer = new RTCPeerConnection({iceServers : this.iceServers});
         peer.onicecandidate = (ev) => this.onICECandidate(peerId, ev);
-        peer.ontrack = (ev) => this.onStreamsReceived(peerId, ev.streams);
+        
+        peer.ontrack = async (ev) => {
+            let stats = await peer.getStats();
+            let statsKey : string;
+            stats.forEach(element => {
+                if(statsKey == null && element.type == 'inbound-rtp'){
+                    statsKey = element.id;
+                }
+            });;
+            this.onStreamsReceived(peerId, ev.streams, peer, statsKey)
+        };
         peer.onnegotiationneeded = () => this.onNegotiationNeeded(peerId);
         const channel = peer.createDataChannel('data', {negotiated: true, id: this.dataChannelID});
         channel.onmessage = (ev : MessageEvent) => {

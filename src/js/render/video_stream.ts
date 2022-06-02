@@ -16,10 +16,15 @@ export class VideoStream{
         return this.stream;
     }
 
-    async startWebcam() : Promise<void>{
+    async startWebcam(width : number, height : number) : Promise<void>{
+        let videoConstraints = {  mandatory: {
+            maxHeight: height,
+            maxWidth: width 
+          }};
+          
         return new Promise((resolve, reject)=>{
             if(navigator.mediaDevices.getUserMedia){
-                navigator.mediaDevices.getUserMedia({video : true}).then(
+                navigator.mediaDevices.getUserMedia({video : videoConstraints as MediaTrackConstraints}).then(
                     (stream)=>{
                         this.stream = stream;
                         resolve();

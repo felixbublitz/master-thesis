@@ -1,5 +1,6 @@
-import { ConnectionHandler } from "./connection_handler";
-import { AddressLabel, CallMode, SocketPackage } from "./connection_types";
+
+import { ConnectionHandler } from "../ws/connection_handler";
+import { AddressLabel, CallMode, SocketPackage } from "../ws/connection_types";
 
 
 export enum Data{
@@ -9,7 +10,7 @@ export enum Data{
 }
 
 export class VideoConference{
-    private readonly connectionHandler;
+    readonly connectionHandler;
 
     onConnected(){};
     onPeerConnected(peerId : number){}
@@ -24,8 +25,8 @@ export class VideoConference{
     constructor(wsAddr : string){
         this.connectionHandler = new ConnectionHandler(); 
         
-        this.connectionHandler.onStreamsReceived = (peerId,  streams) => {
-            this.onPeerData(peerId, Data.VIDEO_START, streams[0])
+        this.connectionHandler.onStreamsReceived = (peerId,  streams, peer, statsKey) => {
+            this.onPeerData(peerId, Data.VIDEO_START, {stream : streams[0], peer : peer, statsKey : statsKey })
         };
 
         this.connectionHandler.onStreamStopped = (peerId : number) => {

@@ -1,7 +1,8 @@
 import {FaceMesh, FACEMESH_TESSELATION, InputImage, NormalizedLandmarkList, Results} from '@mediapipe/face_mesh'
 import {drawConnectors} from '@mediapipe/drawing_utils'
+import { Stats, StatsInputData, StatTuple } from './stats';
 
-export class FeatureExtraction{
+export class Encoder{
     private readonly LIBRARY_FACE_MESH =  'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/';
     private readonly faceMesh;
 
@@ -22,6 +23,10 @@ export class FeatureExtraction{
 
       this.faceMesh.onResults(() => {this.onResult});
       this.faceMesh.initialize();
+    }
+
+    public getStats() : StatTuple{
+      return new StatTuple();
     }
 
     onFaceLandmarks(landmarks : NormalizedLandmarkList[]){};
