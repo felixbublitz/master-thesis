@@ -1,4 +1,4 @@
-import { StatSet, StatTuple } from "../etc/stats";
+import { TimeRecord, TimeSample } from "../etc/time_analysis";
 import { AddressLabel, AdrSocket, CallMode, SocketPackage } from "./connection_types";
 
 const BIT_TO_BYTE = 0.125;
@@ -10,6 +10,7 @@ export class ConnectionHandler{
     private readonly dataChannelID = 0;
     private readonly iceServers = [{urls: "stun:stun.stunprotocol.org"}];
     private readonly peers : Array<RTCPeerConnection> = [];
+    private timeRecord : Array<TimeRecord> = [];
 
     onIDReceived(ownID : number){};
     onStreamsReceived(peerId : number, streams : readonly MediaStream[], peer : RTCPeerConnection, statsKey : string){};
@@ -17,6 +18,32 @@ export class ConnectionHandler{
     onPeerConnected(peerId : number){};
     onPeerDisconnected(peerId : number){};
     onEvent(ev : string, data : any){};
+
+    constructor(){
+        window.setInterval(()=>{
+            this.peers.forEach(async (peer, peerId)=>{
+                if(this.timeRecord[peerId] == null)
+                    this.timeRecord[peerId] = new TimeRecord();
+
+                let bitrate = 0;
+                let rtt = 0;
+                let bytesPerFrame = 0;
+                (await peer.getStats()).forEach(element => {
+                    if(bitrate == 0 && element.type == "candidate-pair" && element.nominated == true){
+                        bitrate = element.availableOutgoingBitrate;//element.availableIncomingBitrate; wieso nicht vorhanden???
+                        rtt = element.currentRoundTripTime;
+                    }
+                    if(bytesPerFrame == 0 && element.type == 'inbound-rtp'){
+                        this.timeRecord[peerId].addContinious('bytesPerFrame', element.bytesReceived, element.framesDecoded);
+                    }
+                   
+                });
+                if(bitrate != null && rtt != null && bytesPerFrame != null)
+                    this.timeRecord[peerId].add('transmissionTime', this.timeRecord[peerId].get('bytesPerFrame').getAverage()/(bitrate*BIT_TO_BYTE), 1);
+                    this.timeRecord[peerId].add('roundTripTime', rtt, 1);
+            });
+        }, 1000);
+    }
 
     init(addr : string){
         this.server = new WebSocket(addr); 
@@ -111,40 +138,10 @@ export class ConnectionHandler{
         })
     }
 
-    async getStats(peerId : number) : Promise<StatSet>{
-        return new Promise(async (resolve, reject) => {
-
-            if(this.peers[peerId] == null){
-                reject('peer does not exist');
-                return;
-            }
-
-            let stats = await this.peers[peerId].getStats();
-            let set = new StatSet();
-            let bitrate = 0;
-            let rtt = 0;
-            let bytesPerFrame = 0;
-            
-            stats.forEach(element => {
-                if(bitrate == 0 && element.type == "candidate-pair" && element.nominated == true){
-                    console.log(element);
-                    bitrate = element.availableOutgoingBitrate;//element.availableIncomingBitrate; wieso nicht vorhanden???
-                    rtt = element.currentRoundTripTime;
-                }
-                if(bytesPerFrame == 0 && element.type == 'inbound-rtp'){
-                    console.log(element);
-                    bytesPerFrame = element.bytesReceived/element.framesDecoded;
-                }
-               
-            });
-
-            if(bitrate != null && rtt != null && bytesPerFrame != null)
-                set.add('transmissionTime', new StatTuple(rtt + bytesPerFrame/(bitrate*BIT_TO_BYTE), 1));
-
-            console.log(set);
-            resolve(set);
-
-        })
+    getTimeSample(peerId : number) : TimeSample{
+        if(this.timeRecord[peerId] == null)
+            throw("peer does not exist");
+        return this.timeRecord[peerId].exportSample();
     }
     
     removeRTCPeer(peerID : number){

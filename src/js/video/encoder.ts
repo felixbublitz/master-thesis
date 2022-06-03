@@ -1,6 +1,6 @@
 import {FaceMesh, FACEMESH_TESSELATION, InputImage, NormalizedLandmarkList, Results} from '@mediapipe/face_mesh'
 import {drawConnectors} from '@mediapipe/drawing_utils'
-import { Stats, StatsInputData, StatTuple } from './stats';
+import { TimeSample } from '../etc/time_analysis';
 
 export class Encoder{
     private readonly LIBRARY_FACE_MESH =  'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/';
@@ -25,8 +25,8 @@ export class Encoder{
       this.faceMesh.initialize();
     }
 
-    public getStats() : StatTuple{
-      return new StatTuple();
+    public getTimeSample() : TimeSample{
+      return  new TimeSample(null, null);
     }
 
     onFaceLandmarks(landmarks : NormalizedLandmarkList[]){};

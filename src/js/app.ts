@@ -1,15 +1,15 @@
 import { DomElement } from "./ws/html_types";
-import { Encoder } from "./etc/encoder";
+import { Encoder } from "./video/encoder";
 import { Data, VideoConference } from "./etc/video_conference";
-import { RenderObject, Renderer } from "./render/renderer";
-import { VideoStream } from "./render/video_stream";
-import { Stats } from "./etc/stats";
+import { RenderObject, Renderer } from "./video/renderer";
+import { VideoStream } from "./video/video_stream";
+import { TimeAnalysis } from "./etc/time_analysis";
 
 const B_TO_KB = 0.001;
 
 class App{
     private readonly renderer : Array<Renderer>;
-    private readonly stats: Stats;
+    private readonly timeAnalysis: TimeAnalysis;
     private readonly encoder;
     private videoConference : VideoConference;
     private readonly wsAddr = "ws://192.168.178.10:2222";
@@ -21,44 +21,7 @@ class App{
         this.renderer = new Array<Renderer>();
         this.encoder = new Encoder();
         this.ownStream = new VideoStream();
-        this.stats = new Stats();
-
-        let peerStat = this.stats.addPeer(0);
-
-
-        peerStat.beforSampleCreation = ()=>{
-            
-           // let report = await this.videoConference.peers[0].getStats();
-
-            if(true){
-               // report.indexOf();
-            }
-
-         /*   report.forEach((item)=>{
-
-                if(item.type == 'data-channel'){
-                    //stat += "data-channel: ↓" + (item.bytesReceived * B_TO_MB).toFixed(2) + " MB ↑" + (item.bytesSent * B_TO_MB).toFixed(2) + " MB";
-                }
-
-                if(item.type == 'inbound-rtp'){
-                    console.log(item);
-                    stat += "decoding: " + ((item.totalDecodeTime/item.framesDecoded)*1000).toFixed(2) + " ms <br> received: " + ((item.bytesReceived/item.framesReceived)*item.framesPerSecond * B_TO_KB).toFixed(2) + " KB/s<br>fps: " + item.framesPerSecond;
-                }
-
-                if(item.type == 'outbound-rtp'){
-                    console.log(item);
-
-                    own_stat += "encoding: " + ((item.totalEncodeTime/item.framesSent)*1000).toFixed(2) + " ms<br>delay: " + ((item.totalPacketSendDelay/item.framesSent)*1000).toFixed(2);
-                }
-
-            
-                //item.type == 'track' || item.type == 'inbound-rtp' || item.type  == 'transport' ||
-                document.getElementById(DomElement.peerStats(id)).innerHTML = stat;
-                document.getElementById(DomElement.peerStats(this.videoConference.peerId)).innerHTML = own_stat;
-            }*/
-        }
-
-        //Stats.export("hallo");
+        this.timeAnalysis = new TimeAnalysis();
         this.init();
     }
 
@@ -100,14 +63,11 @@ class App{
             }
         })
 
-        window.setInterval(() => {this.updateStats()}, 1000)
-
         this.videoConference.onConnected = (async () => {
             this.addPeer(this.videoConference.peerId, true);
             this.renderer[this.videoConference.peerId].setMode(Renderer.Mode.Video);
             this.renderer[this.videoConference.peerId].render(new RenderObject(RenderObject.Type.Video, {stream: this.ownStream.getStream()}));
         })
-
 
         document.getElementById(DomElement.BT_INIT_CALL).onclick = (()=>{
             this.videoConference.call(parseInt(prompt('peer id:')));
@@ -117,77 +77,37 @@ class App{
             this.videoConference.changeTransmissionMode(parseInt((document.getElementById(DomElement.SL_VIDEO_MODE) as HTMLSelectElement).value));
         })
 
-  
+        window.setInterval(() => {this.updateStats()}, 1000)
     }
 
 
-    private  async updateStats(){
+    private  updateStats(){
 
-        const encodingStats = this.encoder.getStats();
-
+        this.timeAnalysis.newRecord();
+        
+        const encodingStats = this.encoder.getTimeSample();
 
         if(this.videoConference.connectionHandler != null){
-            const networkStats = await this.videoConference.connectionHandler.getStats(0);
-            const transmissionTime = networkStats.get('transmissionTime');
-            console.log(transmissionTime);
+            this.videoConference.peers.forEach(async (peer, peerID)=>{
+                const networkStats = await this.videoConference.connectionHandler.getTimeSample(peerID);
+                this.timeAnalysis.add('transmission [Peer ' + peerID + ']', networkStats.items.get('transmissionTime'));
+            })
         }
 
 
-        this.renderer.forEach(async renderer => {
+        this.renderer.forEach((renderer, peerID) => {
             try{
-                const renderStats = await renderer.getStats();
-                const decodingTime = renderStats.get('decodingTime')
-                console.log(decodingTime);
+                const renderTimeSample =  renderer.getTimeSample();
+                this.timeAnalysis.add('decoding [Peer ' + peerID + ']', renderTimeSample.items.get('decoding'));
             }catch(e){
 
             }
             
         });
+
         
-
-        return;
-
-        this.videoConference.peers.forEach(async (peer) => {
-            let id = this.videoConference.peers.indexOf(peer);
-            
-            let report = await peer.getStats();
-            let stat = "";
-            let own_stat = "";
-
-            (document as any).rep = report;
-
-            report.forEach((item)=>{
-
-
-                if(item.type == 'data-channel'){
-                    //stat += "data-channel: ↓" + (item.bytesReceived * B_TO_MB).toFixed(2) + " MB ↑" + (item.bytesSent * B_TO_MB).toFixed(2) + " MB";
-                }
-
-                if(item.type == 'inbound-rtp'){
-                    console.log(item);
-                    stat += "decoding: " + ((item.totalDecodeTime/item.framesDecoded)*1000).toFixed(2) + " ms <br> received: " + ((item.bytesReceived/item.framesReceived)*item.framesPerSecond * B_TO_KB).toFixed(2) + " KB/s<br>fps: " + item.framesPerSecond;
-                }
-
-                if(item.type == 'outbound-rtp'){
-                    console.log(item);
-
-                    own_stat += "encoding: " + ((item.totalEncodeTime/item.framesSent)*1000).toFixed(2) + " ms<br>delay: " + ((item.totalPacketSendDelay/item.framesSent)*1000).toFixed(2);
-                }
-
-            
-                //item.type == 'track' || item.type == 'inbound-rtp' || item.type  == 'transport' ||
-                document.getElementById(DomElement.peerStats(id)).innerHTML = stat;
-                document.getElementById(DomElement.peerStats(this.videoConference.peerId)).innerHTML = own_stat;
-            })
-        });
       
     }
-
-    
-
-
-
-  
 
     private addPeer(peerId : number, self? : boolean){
         let item = document.createElement("li");

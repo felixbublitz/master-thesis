@@ -1,4 +1,4 @@
-import { Stats, StatSet, StatTuple } from "../etc/stats";
+import { TimeRecord, TimeSample } from "../etc/time_analysis";
 
 export class Renderer{
 
@@ -7,11 +7,12 @@ export class Renderer{
     private mode : Renderer.Mode;
     private readonly width = 480;
     private readonly height = 360;
-    private lastRenderObject  : RenderObject;
-    private lastRenderStat  : StatTuple;
+    private timeRecord : TimeRecord;
+    private logInterval : number;
 
     constructor(domElement: HTMLElement){
         this.domElement = domElement;
+        this.timeRecord = new TimeRecord();
     }
 
     setMode(mode : Renderer.Mode){
@@ -37,34 +38,8 @@ export class Renderer{
         return video;
     }
 
-    public async getStats() : Promise<StatSet>{
-
-        return new Promise(async (resolve, reject)=>{
-            if(this.lastRenderObject == null){
-                reject("no render stats available");
-                return;
-            }
-            switch(this.lastRenderObject.type){
-                case RenderObject.Type.RtcVideo:
-                    this.lastRenderObject.data.peer.getStats().then((stats : any)=>{
-                        let decodeStat = stats.get(this.lastRenderObject.data.statsKey);
-                        let out = new StatSet();
-                        
-                        if(this.lastRenderStat == null) out.add('decodingTime', new StatTuple(decodeStat.totalDecodeTime, decodeStat.framesDecoded))
-                        else out.add('decodingTime', new StatTuple(decodeStat.totalDecodeTime - this.lastRenderStat.elapsedTime, decodeStat.framesDecoded - this.lastRenderStat.frames))
-                       
-                        this.lastRenderStat = new StatTuple(decodeStat.totalDecodeTime, decodeStat.framesDecoded);
-                        resolve(out);
-                    });
-                    
-                    break;
-                default:
-                    reject("no render stats available");
-            }
-        });
-
-       
-       
+    public getTimeSample() : TimeSample{       
+        return this.timeRecord.exportSample();
     }
 
     clear(){
@@ -87,6 +62,7 @@ export class Renderer{
     }
 
     private clearVideo(){
+        window.clearInterval(this.logInterval);
         let video = this.domRenderer as HTMLVideoElement;
         video.pause();
         video.removeAttribute('src');
@@ -106,13 +82,21 @@ export class Renderer{
     private renderVideo(renderObject : RenderObject){
         let video : HTMLVideoElement = this.domRenderer as HTMLVideoElement;
         video.srcObject = renderObject.data.stream;
+
+        this.logInterval = window.setTimeout(()=>{
+            if(renderObject.type != RenderObject.Type.RtcVideo) return;
+
+            renderObject.data.peer.getStats().then((stats : any)=>{
+                let decodeStat = stats.get(renderObject.data.statsKey);
+                console.log();
+                this.timeRecord.addContinious('decoding', decodeStat.totalDecodeTime, decodeStat.framesDecoded);
+            });
+        }, 1000);
     }
 
 
     render(data : RenderObject){
         if(!this.isValidInput(data)) throw("invalid render data");
-
-        this.lastRenderObject = data;
 
         switch(data.type){
             case RenderObject.Type.Video:
