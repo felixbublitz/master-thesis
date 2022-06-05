@@ -3,13 +3,13 @@ import { Encoder } from "./video/encoder";
 import { Data, VideoConference } from "./etc/video_conference";
 import { RenderObject, Renderer } from "./video/renderer";
 import { VideoStream } from "./video/video_stream";
-import { TimeAnalysis } from "./etc/time_analysis";
+import { PerformanceStatistic } from "./etc/performance";
 
 const B_TO_KB = 0.001;
 
 class App{
     private readonly renderer : Array<Renderer>;
-    private readonly timeAnalysis: TimeAnalysis;
+    private readonly performanceStatistic: PerformanceStatistic;
     private readonly encoder;
     private videoConference : VideoConference;
     private readonly wsAddr = "ws://192.168.178.10:2222";
@@ -21,7 +21,7 @@ class App{
         this.renderer = new Array<Renderer>();
         this.encoder = new Encoder();
         this.ownStream = new VideoStream();
-        this.timeAnalysis = new TimeAnalysis();
+        this.performanceStatistic = new PerformanceStatistic();
         this.init();
     }
 
@@ -73,6 +73,10 @@ class App{
             this.videoConference.call(parseInt(prompt('peer id:')));
         })
 
+        document.getElementById(DomElement.BT_EXPORT).onclick = (()=>{
+            this.performanceStatistic.export();
+        })
+
         document.getElementById(DomElement.SL_VIDEO_MODE).onchange = ((ev : Event)=>{
             this.videoConference.changeTransmissionMode(parseInt((document.getElementById(DomElement.SL_VIDEO_MODE) as HTMLSelectElement).value));
         })
@@ -83,28 +87,31 @@ class App{
 
     private  updateStats(){
 
-        this.timeAnalysis.newRecord();
+        let dataset = new PerformanceStatistic.Dataset();
+        let sample;
         
-        const encodingStats = this.encoder.getTimeSample();
+        sample = this.encoder.getPerformanceSample();
 
         if(this.videoConference.connectionHandler != null){
             this.videoConference.peers.forEach(async (peer, peerID)=>{
-                const networkStats = await this.videoConference.connectionHandler.getTimeSample(peerID);
-                this.timeAnalysis.add('transmission [Peer ' + peerID + ']', networkStats.items.get('transmissionTime'));
+                sample = await this.videoConference.connectionHandler.getPerformanceSample(peerID);
+                if(sample.has('transmissionTime')) dataset.add('transmission [Peer ' + peerID + ']', sample.get('transmissionTime'));
             })
         }
 
 
         this.renderer.forEach((renderer, peerID) => {
             try{
-                const renderTimeSample =  renderer.getTimeSample();
-                this.timeAnalysis.add('decoding [Peer ' + peerID + ']', renderTimeSample.items.get('decoding'));
+                sample = renderer.getPerformanceSample();
+                if(sample.has('decoding')) dataset.add('decoding [Peer ' + peerID + ']', sample.get('decoding'));
             }catch(e){
 
             }
             
         });
 
+        console.log(dataset);
+        this.performanceStatistic.add(dataset);
         
       
     }
@@ -132,6 +139,7 @@ class App{
 
     private removePeer(peerId : number){
         document.getElementById(DomElement.peerItem(peerId)).remove();
+        delete this.renderer[peerId];
     }
 
 }

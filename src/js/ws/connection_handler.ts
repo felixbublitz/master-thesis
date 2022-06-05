@@ -1,4 +1,4 @@
-import { TimeRecord, TimeSample } from "../etc/time_analysis";
+import { PerformanceMeter } from "../etc/performance";
 import { AddressLabel, AdrSocket, CallMode, SocketPackage } from "./connection_types";
 
 const BIT_TO_BYTE = 0.125;
@@ -10,7 +10,7 @@ export class ConnectionHandler{
     private readonly dataChannelID = 0;
     private readonly iceServers = [{urls: "stun:stun.stunprotocol.org"}];
     private readonly peers : Array<RTCPeerConnection> = [];
-    private timeRecord : Array<TimeRecord> = [];
+    private performanceMeters : Array<PerformanceMeter> = [];
 
     onIDReceived(ownID : number){};
     onStreamsReceived(peerId : number, streams : readonly MediaStream[], peer : RTCPeerConnection, statsKey : string){};
@@ -22,25 +22,24 @@ export class ConnectionHandler{
     constructor(){
         window.setInterval(()=>{
             this.peers.forEach(async (peer, peerId)=>{
-                if(this.timeRecord[peerId] == null)
-                    this.timeRecord[peerId] = new TimeRecord();
+                if(this.performanceMeters[peerId] == null)
+                    this.performanceMeters[peerId] = new PerformanceMeter();
 
                 let bitrate = 0;
                 let rtt = 0;
-                let bytesPerFrame = 0;
                 (await peer.getStats()).forEach(element => {
                     if(bitrate == 0 && element.type == "candidate-pair" && element.nominated == true){
                         bitrate = element.availableOutgoingBitrate;//element.availableIncomingBitrate; wieso nicht vorhanden???
                         rtt = element.currentRoundTripTime;
                     }
-                    if(bytesPerFrame == 0 && element.type == 'inbound-rtp'){
-                        this.timeRecord[peerId].addContinious('bytesPerFrame', element.bytesReceived, element.framesDecoded);
+                    if(element.type == 'inbound-rtp'){
+                        this.performanceMeters[peerId].addContinious('bytesPerFrame', element.bytesReceived, element.framesDecoded);
                     }
                    
                 });
-                if(bitrate != null && rtt != null && bytesPerFrame != null)
-                    this.timeRecord[peerId].add('transmissionTime', this.timeRecord[peerId].get('bytesPerFrame').getAverage()/(bitrate*BIT_TO_BYTE), 1);
-                    this.timeRecord[peerId].add('roundTripTime', rtt, 1);
+                if(bitrate != null && rtt != null && this.performanceMeters[peerId].get('bytesPerFrame') != null)
+                    this.performanceMeters[peerId].add('transmissionTime', this.performanceMeters[peerId].get('bytesPerFrame').getAverage()/(bitrate*BIT_TO_BYTE), 1);
+                    this.performanceMeters[peerId].add('roundTripTime', rtt, 1);
             });
         }, 1000);
     }
@@ -138,10 +137,10 @@ export class ConnectionHandler{
         })
     }
 
-    getTimeSample(peerId : number) : TimeSample{
-        if(this.timeRecord[peerId] == null)
+    getPerformanceSample(peerId : number) : PerformanceMeter.Sample{
+        if(this.performanceMeters[peerId] == null)
             throw("peer does not exist");
-        return this.timeRecord[peerId].exportSample();
+        return this.performanceMeters[peerId].sample();
     }
     
     removeRTCPeer(peerID : number){

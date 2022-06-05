@@ -1,4 +1,4 @@
-import { TimeRecord, TimeSample } from "../etc/time_analysis";
+import { PerformanceMeter } from "../etc/performance";
 
 export class Renderer{
 
@@ -7,12 +7,12 @@ export class Renderer{
     private mode : Renderer.Mode;
     private readonly width = 480;
     private readonly height = 360;
-    private timeRecord : TimeRecord;
+    private performanceMeter : PerformanceMeter;
     private logInterval : number;
 
     constructor(domElement: HTMLElement){
         this.domElement = domElement;
-        this.timeRecord = new TimeRecord();
+        this.performanceMeter = new PerformanceMeter();
     }
 
     setMode(mode : Renderer.Mode){
@@ -38,8 +38,8 @@ export class Renderer{
         return video;
     }
 
-    public getTimeSample() : TimeSample{       
-        return this.timeRecord.exportSample();
+    public getPerformanceSample() : PerformanceMeter.Sample{       
+        return this.performanceMeter.sample();
     }
 
     clear(){
@@ -83,13 +83,12 @@ export class Renderer{
         let video : HTMLVideoElement = this.domRenderer as HTMLVideoElement;
         video.srcObject = renderObject.data.stream;
 
-        this.logInterval = window.setTimeout(()=>{
+        this.logInterval = window.setInterval(()=>{
             if(renderObject.type != RenderObject.Type.RtcVideo) return;
 
             renderObject.data.peer.getStats().then((stats : any)=>{
                 let decodeStat = stats.get(renderObject.data.statsKey);
-                console.log();
-                this.timeRecord.addContinious('decoding', decodeStat.totalDecodeTime, decodeStat.framesDecoded);
+                this.performanceMeter.addContinious('decoding', decodeStat.totalDecodeTime, decodeStat.framesDecoded);
             });
         }, 1000);
     }

@@ -1,30 +1,27 @@
 const CSV_NEW_COLUMN = ',';
 const CSV_NEW_ROW = '\n';
 
-
-export class TimeAnalysis{
+export class PerformanceStatistic{
 
     readonly fileName = 'stats.csv';
     static samplingTime = 1000; //ms
     private readonly fields : Array<string>;
-    private readonly records : Array<TimeAnalysis.Record>;
+    private readonly datasets : Array<PerformanceStatistic.Dataset>;
+    private readonly startTime;
 
     constructor(){
-        this.records = new Array<TimeAnalysis.Record>();
+        this.datasets = new Array<PerformanceStatistic.Dataset>();
         this.fields = new Array<string>();
+        this.startTime = Date.now();
         this.fields.push('time');
     }
 
-    newRecord(){
-        this.records.push(new TimeAnalysis.Record());
-    }
-
-    add(title : string, value : number){
-        console.log(title);
-        console.log(value);
-        this.records[this.records.length-1].add(title, value);
-        if(!this.fields.includes(title))
-            this.fields.push(title);
+    add(dataset : PerformanceStatistic.Dataset){
+        this.datasets.push(dataset);
+        dataset.items.forEach((item, title) => {
+            if(!this.fields.includes(title))
+                this.fields.push(title);
+        });
     }
 
     private serialize() : string{
@@ -34,44 +31,40 @@ export class TimeAnalysis{
         this.fields.forEach(field => {
             out += field + CSV_NEW_COLUMN
         });
-        out.slice(0, -1);
+        out = out.slice(0, -1);
+        out += CSV_NEW_ROW;
 
         //content
-        this.records.forEach(record => {
-            record.items.forEach((value, title)=>{
+        this.datasets.forEach(dataset => {
+            out += (dataset.timestamp - this.startTime) + CSV_NEW_COLUMN;
+            dataset.items.forEach((value, title)=>{
                 out += value + CSV_NEW_COLUMN
-            })
+            });
+            out = out.slice(0, -1);
+            out += CSV_NEW_ROW;
             
         });
-        out.slice(0, -1);
-
-        return "";
+       
+        return out;
     }
 
     public export(){
-        this.download(this.serialize(), this.fileName);
-    }
-
-    private download(text : string, filename : string){
         var element = document.createElement('a');
-        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-        element.setAttribute('download', filename);
-      
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(this.serialize()));
+        element.setAttribute('download', this.fileName);
         element.style.display = 'none';
         document.body.appendChild(element);
-      
         element.click();
-      
         document.body.removeChild(element);
     }
 }
 
-export namespace TimeAnalysis{
-    export class Record{
-        private readonly timestamp : number;
+export namespace PerformanceStatistic{
+    export class Dataset{
+        readonly timestamp : number;
         readonly items : Map<string, number>
         constructor(){
-            this.timestamp = window.performance.now();
+            this.timestamp = Date.now();
             this.items = new Map();
         }
 
@@ -82,32 +75,15 @@ export namespace TimeAnalysis{
 }
 
 
-export class TimeSample{
-    readonly period: number;
-    readonly items : Map<string, number>;
-
-    constructor(period : number, items : Map<string, number>){
-        this.period = period;
-        this.items = items;
-    }
-
-}
-
-export namespace TimeSample{
-    interface Item{
-        period : number
-    }
-}
-
-export class TimeRecord{
-    private readonly items : Map<string, TimeRecord.Item>;
+export class PerformanceMeter{
+    private readonly items : Map<string, PerformanceMeter.MeasuringItem>;
     private lastSample : number;
 
     constructor(){
         this.items = new Map();
     }
 
-    exportSample(){
+    sample() : PerformanceMeter.Sample{
         if(this.lastSample == 0){
             this.lastSample = window.performance.now();
             return;
@@ -119,9 +95,8 @@ export class TimeRecord{
             item.reset();
         })
 
-        return new TimeSample(window.performance.now() - this.lastSample,  map);
+        return new PerformanceMeter.Sample(window.performance.now() - this.lastSample,  map);
     }
-
 
     get(key : string){
         return this.items.get(key);
@@ -132,16 +107,16 @@ export class TimeRecord{
             this.items.get(key).add(value, samples);
             return;
         }
-        this.items.set(key, new TimeRecord.Item(value, samples));
+        this.items.set(key, new PerformanceMeter.MeasuringItem(value, samples));
     }
 
     addContinious(key : string, absoluteValue : number, absoluteSamples : number){
-        if(!this.items.has(key)) this.items.set(key, new TimeRecord.Item());
+        if(!this.items.has(key)) this.items.set(key, new PerformanceMeter.MeasuringItem());
         this.items.get(key).addContinuous(absoluteValue, absoluteSamples);
     }
 
     measure(key : string){
-        if(!this.items.has(key)) this.items.set(key, new TimeRecord.Item());
+        if(!this.items.has(key)) this.items.set(key, new PerformanceMeter.MeasuringItem());
         this.items.get(key).measure();
     }
 
@@ -151,8 +126,26 @@ export class TimeRecord{
     }
 }
 
-export namespace TimeRecord{
-    export class Item{
+export namespace PerformanceMeter{
+
+    export class Sample{
+        readonly period: number;
+        private readonly items : Map<string, number>;
+    
+        constructor(period : number, items : Map<string, number>){
+            this.period = period;
+            this.items = items;
+        }
+        
+        has(key : string){
+            return this.items.has(key);
+        }
+        get(key : string){
+            return this.items.get(key);
+        }
+    }
+
+    export class MeasuringItem{
         private samples = 0;
         private value = 0;
         public lastAbsoluteSamples = 0;
@@ -161,8 +154,8 @@ export namespace TimeRecord{
         private measuring = false;
     
         constructor(value?:number, samples?:number){
-            this.value = value;
-            this.samples = samples;
+            this.value = value?value : 0;
+            this.samples = samples?samples : 0;
         }
 
         addContinuous(absoluteValue : number, absoluteSamples : number){
@@ -172,16 +165,8 @@ export namespace TimeRecord{
                 return;
             }
 
-            console.log(absoluteValue - this.lastAbsoluteValue);
-            console.log(absoluteSamples - this.lastAbsoluteSamples);
-
-
             this.value += (absoluteValue - this.lastAbsoluteValue);
             this.samples += (absoluteSamples - this.lastAbsoluteSamples);
-
-            console.log(this.value);
-            console.log(this.samples);
-
             this.lastAbsoluteValue = absoluteValue;
             this.lastAbsoluteSamples = absoluteSamples;
             
