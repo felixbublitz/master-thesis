@@ -1,6 +1,8 @@
 
+import { NormalizedLandmarkList } from "@mediapipe/face_mesh";
+import { Encoder } from "../video/encoder";
 import { ConnectionHandler } from "../ws/connection_handler";
-import { AddressLabel, CallMode, SocketPackage } from "../ws/connection_types";
+import { AddressLabel, CallMode, RTCPackage, SocketPackage } from "../ws/connection_types";
 
 
 export enum Data{
@@ -11,6 +13,7 @@ export enum Data{
 
 export class VideoConference{
     readonly connectionHandler;
+    private encoder : Encoder;
 
     onConnected(){};
     onPeerConnected(peerId : number){}
@@ -43,6 +46,22 @@ export class VideoConference{
 
         this.connectionHandler.init(wsAddr);
 
+    }
+
+    setEncoder(encoder : Encoder){
+        this.encoder = encoder;
+
+        encoder.onFrameAvailable = (peerId, data) => {
+            
+            let wireframe = new RTCPackage.WireFrameData();
+           /* data.forEach((item : any)=>{
+                wireframe.add({ x: item.x, y: item.y, z: item.z} as RTCPackage.Coordinates);
+            })*/
+            wireframe.add({x : 0.958, y: 0.036, z:0.05} as RTCPackage.Coordinates);
+
+            let pkg = new RTCPackage(RTCPackage.Type.WireframeData, wireframe);
+            this.connectionHandler.sendRTCData(peerId, pkg)
+        }
     }
 
     get peers() : RTCPeerConnection[]{
@@ -85,23 +104,28 @@ export class VideoConference{
         });
     }
 
-    onVideoRequest() : MediaStream{
-        throw("no video available");
-    }
 
-    private startTransmission(peerId : number, mode : CallMode){
+    private async startTransmission(peerId : number, mode : CallMode){
         switch(mode){
             case CallMode.None:
                 break;
             case CallMode.Video:
-                this.connectionHandler.addStream(peerId, this.onVideoRequest());
+                console.log(this);
+                let stream = await this.encoder.getStream();
+                this.connectionHandler.addStream(peerId, stream);
+                break;
+            case CallMode.Wireframe:
+                this.encoder.start(peerId, Encoder.Encoding.Wireframe);
                 break;
             default:
                 throw(new Error("call mode not implemented"));
         }
     }
 
+ 
+
     private stopTransmission(peerId : number, mode : CallMode){
+
         switch(mode){
             case CallMode.None:
                 break;
@@ -110,6 +134,7 @@ export class VideoConference{
                 this.connectionHandler.send(new SocketPackage('stream_stopped', null, new AddressLabel(this.connectionHandler.ownID, peerId)));
                 break;
             case CallMode.Wireframe:
+                this.encoder.stop(peerId);
             break;
 
             default:

@@ -1,8 +1,14 @@
 import { PerformanceMeter } from "../etc/performance";
-import { AddressLabel, AdrSocket, CallMode, SocketPackage } from "./connection_types";
+import { AddressLabel, RTCPackage, SocketPackage } from "./connection_types";
+
+
+enum RtcEncoding{
+    Binary,
+    String
+}
 
 const BIT_TO_BYTE = 0.125;
-
+const RTC_DATA_ENCODING : RtcEncoding = RtcEncoding.Binary;
 
 export class ConnectionHandler{
     private server : WebSocket;
@@ -163,13 +169,30 @@ export class ConnectionHandler{
             this.onStreamsReceived(peerId, ev.streams, peer, statsKey)
         };
         peer.onnegotiationneeded = () => this.onNegotiationNeeded(peerId);
-        const channel = peer.createDataChannel('data', {negotiated: true, id: this.dataChannelID});
-        channel.onmessage = (ev : MessageEvent) => {
-
+        
+        const binaryChannel = peer.createDataChannel('binaryData', {negotiated: true, id: this.dataChannelID});
+        (peer as any).binaryChannel = binaryChannel;
+        const stringChannel = peer.createDataChannel('stringChannel', {negotiated: true, id: this.dataChannelID+1});
+        (peer as any).stringChannel = stringChannel;
+        binaryChannel.onmessage = (ev) => {
+            this.onRTCMessage(RTCPackage.decode(new Uint8Array(ev.data)))
         };
+        stringChannel.onmessage = (ev) => {
+            this.onRTCMessage(RTCPackage.decode(ev.data.toString()))
+        };
+
         console.log("RTC Connection to: " + peerId + " established");
         this.onPeerConnected(peerId);
         return peer;
+    }
+
+    public onRTCMessage(pkg : RTCPackage){
+        //console.log(pkg.event);
+    }
+
+    public sendRTCData(peerId : number, pkg : RTCPackage){
+        if(RTC_DATA_ENCODING == RtcEncoding.Binary) (this.peers[peerId] as any).binaryChannel.send(pkg.encodeBinary().buffer);
+        if(RTC_DATA_ENCODING == RtcEncoding.String) (this.peers[peerId] as any).stringChannel.send(pkg.encodeString());       
     }
 
     private async onNegotiationNeeded(peerId : number){

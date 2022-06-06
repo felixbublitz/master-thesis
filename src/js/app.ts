@@ -1,9 +1,9 @@
 import { DomElement } from "./ws/html_types";
 import { Encoder } from "./video/encoder";
 import { Data, VideoConference } from "./etc/video_conference";
-import { RenderObject, Renderer } from "./video/renderer";
-import { VideoStream } from "./video/video_stream";
+import { RenderObject, Renderer, VideoStream } from "./video/renderer";
 import { PerformanceStatistic } from "./etc/performance";
+import { CallMode } from "./ws/connection_types";
 
 const B_TO_KB = 0.001;
 
@@ -15,23 +15,17 @@ class App{
     private readonly wsAddr = "ws://192.168.178.10:2222";
     private readonly textPeer = "Peer";
     private readonly textMe = "[me]";
-    private readonly ownStream : VideoStream;
     
     constructor(){
         this.renderer = new Array<Renderer>();
-        this.encoder = new Encoder();
-        this.ownStream = new VideoStream();
+        this.encoder = new Encoder(); 
         this.performanceStatistic = new PerformanceStatistic();
         this.init();
     }
 
     private async init(){
-        await this.ownStream.startWebcam(480,360);
         this.videoConference = new VideoConference(this.wsAddr);
-    
-        this.encoder.onFaceLandmarks = (landmark)=>{
-
-        }
+        this.videoConference.setEncoder(this.encoder);
 
         this.videoConference.onPeerConnected = ((peerId : number) => {
             console.log("add peer: " + peerId)
@@ -42,9 +36,6 @@ class App{
             this.removePeer(peerId);
         });
 
-        this.videoConference.onVideoRequest = ()=>{
-            return this.ownStream.getStream();
-        }
 
         this.videoConference.onPeerData = ((peerId : number, type : Data, data : any) => {
             switch(type){
@@ -66,7 +57,8 @@ class App{
         this.videoConference.onConnected = (async () => {
             this.addPeer(this.videoConference.peerId, true);
             this.renderer[this.videoConference.peerId].setMode(Renderer.Mode.Video);
-            this.renderer[this.videoConference.peerId].render(new RenderObject(RenderObject.Type.Video, {stream: this.ownStream.getStream()}));
+            let stream = await this.encoder.getStream();
+            this.renderer[this.videoConference.peerId].render(new RenderObject(RenderObject.Type.Video, {stream: stream}));
         })
 
         document.getElementById(DomElement.BT_INIT_CALL).onclick = (()=>{
