@@ -8,7 +8,7 @@ enum RtcEncoding{
 }
 
 const BIT_TO_BYTE = 0.125;
-const RTC_DATA_ENCODING : RtcEncoding = RtcEncoding.Binary;
+const RTC_DATA_ENCODING : RtcEncoding = RtcEncoding.String;
 
 export class ConnectionHandler{
     private server : WebSocket;
@@ -175,7 +175,7 @@ export class ConnectionHandler{
         const stringChannel = peer.createDataChannel('stringChannel', {negotiated: true, id: this.dataChannelID+1});
         (peer as any).stringChannel = stringChannel;
         binaryChannel.onmessage = (ev) => {
-            this.onRTCMessage(RTCPackage.decode(new Uint8Array(ev.data)))
+            this.onRTCMessage(RTCPackage.decode(new Int8Array(ev.data)))
         };
         stringChannel.onmessage = (ev) => {
             this.onRTCMessage(RTCPackage.decode(ev.data.toString()))

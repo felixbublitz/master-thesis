@@ -54,10 +54,10 @@ export class VideoConference{
         encoder.onFrameAvailable = (peerId, data) => {
             
             let wireframe = new RTCPackage.WireFrameData();
-           /* data.forEach((item : any)=>{
+            data.forEach((item : any)=>{
                 wireframe.add({ x: item.x, y: item.y, z: item.z} as RTCPackage.Coordinates);
-            })*/
-            wireframe.add({x : 0.958, y: 0.036, z:0.05} as RTCPackage.Coordinates);
+            })
+
 
             let pkg = new RTCPackage(RTCPackage.Type.WireframeData, wireframe);
             this.connectionHandler.sendRTCData(peerId, pkg)

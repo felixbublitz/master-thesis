@@ -39,8 +39,8 @@ export class RTCPackage{
 
     encodeBinary(){
         let dataBinary = this.data.encodeBinary();
-        let headerBinary = new Uint8Array([this.type]);
-        let out = new Uint8Array(headerBinary.length + dataBinary.length);
+        let headerBinary = new Int8Array([this.type]);
+        let out = new Int8Array(headerBinary.length + dataBinary.length);
         out.set(headerBinary);
         out.set(dataBinary, headerBinary.length);
         return out;
@@ -54,7 +54,7 @@ export class RTCPackage{
         return JSON.stringify(obj);
     }
 
-    static decodeBytes(data : Uint8Array) : RTCPackage{
+    static decodeBytes(data : Int8Array) : RTCPackage{
         let type : number = data[0];
         let content = data.slice(1);
         return new RTCPackage(type, RTCPackage.Data.decode(content, type));
@@ -66,8 +66,8 @@ export class RTCPackage{
     }
 
     static decode(data : any) : RTCPackage{
-        if(data instanceof Uint8Array) return RTCPackage.decodeBytes(data as Uint8Array);
-        if(data instanceof String) return RTCPackage.decodeString(data as string);
+        if(data instanceof Int8Array) return RTCPackage.decodeBytes(data as Int8Array);
+        if(typeof data === 'string') return RTCPackage.decodeString(data as string);
         throw("cant decode data");
     }
 }
@@ -88,7 +88,7 @@ export namespace RTCPackage{
 
     export class Data{
 
-        encodeBinary() : Uint8Array{
+        encodeBinary() : Int8Array{
             throw("not implemented yet");
         }
 
@@ -107,10 +107,10 @@ export namespace RTCPackage{
 
     export class WireFrameData implements Data{
         readonly data : Array<Coordinates>;
-        readonly bytesPerDigit;
+        readonly bytesPerDigit : number = 4; //must be <= 4
 
         constructor(bytesPerDigit? : number){
-            this.bytesPerDigit = bytesPerDigit==null?2:bytesPerDigit;
+            this.bytesPerDigit = bytesPerDigit==null?this.bytesPerDigit:bytesPerDigit;
             this.data = new Array();
         }
 
@@ -119,17 +119,17 @@ export namespace RTCPackage{
         }
 
 
-        encodeBinary() : Uint8Array{
-            let out = new Uint8Array(3 * this.data.length * this.bytesPerDigit + 1);
+        encodeBinary() : Int8Array{
+            let out = new Int8Array(3 * this.data.length * this.bytesPerDigit + 1);
 
             let sizeFieldBytes = 1;
             out[0] = this.bytesPerDigit; //size specificator
 
-            for(let i=0; i<this.data.length; i+=this.bytesPerDigit){
+            for(let i=0; i<this.data.length; i+=1){
 
-                let xIndex = sizeFieldBytes + 3*i;
-                let yIndex = sizeFieldBytes + 3*i + this.bytesPerDigit;
-                let zIndex = sizeFieldBytes + 3*i + 2* this.bytesPerDigit;
+                let xIndex = sizeFieldBytes + 3 * i * this.bytesPerDigit;
+                let yIndex = xIndex + this.bytesPerDigit;
+                let zIndex = yIndex + this.bytesPerDigit;
 
                 const encodedX = this.encodeNumberBinary(this.data[i].x, this.bytesPerDigit);
                 const encodedY = this.encodeNumberBinary(this.data[i].y, this.bytesPerDigit);
@@ -145,10 +145,10 @@ export namespace RTCPackage{
             return out;
         }
 
-        private encodeNumberBinary(number : number, bytes : number): Uint8Array{
-            const digits = Math.pow(2, bytes*8).toString().length - 1;
+        private encodeNumberBinary(number : number, bytes : number): Int8Array{
+            const digits = WireFrameData.getDigitCountFromBytes(bytes);
             const normalizedNumber = Math.round(number * Math.pow(10, digits));
-            const out = new Uint8Array(bytes);
+            const out = new Int8Array(bytes);
             const mask = 255; //111111111
             
             for(let i=0; i<bytes; i++){
@@ -157,18 +157,24 @@ export namespace RTCPackage{
             return out;
         }
 
-        private static decodeNumberBinary(encoded : Uint8Array) : number{
+        private static getDigitCountFromBytes(bytes : number) : number{
+            return (Math.pow(2, bytes*8)/2).toString().length - 1;
+        }
+
+        private static decodeNumberBinary(encoded : Int8Array) : number{
             let out = 0;
             const mask = 255; //111111111
-            const digits = Math.pow(2, encoded.length*8).toString().length - 1;
+
+            const digits = WireFrameData.getDigitCountFromBytes(encoded.length);
             for(let i=0; i<encoded.length; i++){
-                out += encoded[i] << 8*i;
+                if(i == encoded.length-1) out += (encoded[i]) << 8*i;
+                else out += (encoded[i] & mask) << 8*i;
             }
             out = parseFloat((out * (1/Math.pow(10, digits))).toPrecision(digits));
             return out;
         }
 
-        static decodeBinary(bytes : Uint8Array) : WireFrameData{
+        static decodeBinary(bytes : Int8Array) : WireFrameData{
             
             let out = new WireFrameData(bytes[0]); //size specificator
 
@@ -193,8 +199,8 @@ export namespace RTCPackage{
         }
 
         static decode(data : any) : WireFrameData{
-            if(data instanceof Uint8Array) return this.decodeBinary(data as Uint8Array);
-            if(data instanceof String) return this.decodeString(data as string);
+            if(data instanceof Int8Array) return this.decodeBinary(data as Int8Array);
+            if(typeof data === 'string') return this.decodeString(data as string);
             throw("invailid input type");
         }
     }

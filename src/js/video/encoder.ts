@@ -57,7 +57,7 @@ export class Encoder{
           switch(task){
             case Encoder.Encoding.Wireframe:
               if(this.currentLandMarks != null)
-                this.onFrameAvailable(peerID, this.currentLandMarks);
+                this.onFrameAvailable(peerID, this.currentLandMarks[0]);
               console.log("feature send");
             break;
 
@@ -78,7 +78,7 @@ export class Encoder{
 
       this.faceMesh.onResults((results) => {
         //console.log(results);
-        if (results.multiFaceLandmarks)
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks [0] != null)
           this.currentLandMarks = results.multiFaceLandmarks;
       });
 
