@@ -80,6 +80,11 @@ class Server{
                 peer.changeMode(pkg.data.mode);
                 break;
 
+            case 'rtc_established':
+                if(peer.callSession == null) return pkg.replyError("you have to be in a call to change the mode");
+                peer.connectionEstablished();
+            break;
+
             default:
 
         }

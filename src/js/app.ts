@@ -1,9 +1,9 @@
 import { DomElement } from "./ws/html_types";
 import { Encoder } from "./video/encoder";
 import { Data, VideoConference } from "./etc/video_conference";
-import { RenderObject, Renderer, VideoStream } from "./video/renderer";
+import { RenderObject, Renderer } from "./video/renderer";
 import { PerformanceStatistic } from "./etc/performance";
-import { CallMode } from "./ws/connection_types";
+import { RenderMode } from "./video/render_types";
 
 const B_TO_KB = 0.001;
 
@@ -12,7 +12,7 @@ class App{
     private readonly performanceStatistic: PerformanceStatistic;
     private readonly encoder;
     private videoConference : VideoConference;
-    private readonly wsAddr = "ws://192.168.178.10:2222";
+    private readonly wsAddr = "ws://127.0.0.1:2222";
     private readonly textPeer = "Peer";
     private readonly textMe = "[me]";
     
@@ -37,17 +37,16 @@ class App{
         });
 
 
-        this.videoConference.onPeerData = ((peerId : number, type : Data, data : any) => {
+        this.videoConference.onPeerData = ((peerId : number, type : Data, data? : any) => {
             switch(type){
-                case Data.VIDEO_START:
-                    this.renderer[peerId].setMode(Renderer.Mode.Video);
-                    this.renderer[peerId].render(new RenderObject(RenderObject.Type.RtcVideo, data));
-                    console.info("stream received from: " + peerId);
+                case Data.StartReception:
+                    this.renderer[peerId].setMode(data.mode);
                     break;
-
-                case Data.VIDEO_END:
+                case Data.StopReception:
                     this.renderer[peerId].clear();
-                    console.info("stream stopped from: " + peerId);
+                    break;
+                case Data.Render:
+                    this.renderer[peerId].render(data.renderObject);
                     break;
                 default:
 
@@ -56,9 +55,9 @@ class App{
 
         this.videoConference.onConnected = (async () => {
             this.addPeer(this.videoConference.peerId, true);
-            this.renderer[this.videoConference.peerId].setMode(Renderer.Mode.Video);
+            this.renderer[this.videoConference.peerId].setMode(RenderMode.Video);
             let stream = await this.encoder.getStream();
-            this.renderer[this.videoConference.peerId].render(new RenderObject(RenderObject.Type.Video, {stream: stream}));
+            this.renderer[this.videoConference.peerId].render(new RenderObject(RenderMode.Video, {stream: stream}));
         })
 
         document.getElementById(DomElement.BT_INIT_CALL).onclick = (()=>{
@@ -68,6 +67,16 @@ class App{
         document.getElementById(DomElement.BT_EXPORT).onclick = (()=>{
             this.performanceStatistic.export();
         })
+
+ 
+        for(let item in RenderMode){
+            if(isNaN(Number(item))){
+                const opt = document.createElement('option');
+                opt.value = RenderMode[item];
+                opt.innerText = item;
+                document.getElementById(DomElement.SL_VIDEO_MODE).appendChild(opt);
+            }
+        }
 
         document.getElementById(DomElement.SL_VIDEO_MODE).onchange = ((ev : Event)=>{
             this.videoConference.changeTransmissionMode(parseInt((document.getElementById(DomElement.SL_VIDEO_MODE) as HTMLSelectElement).value));
@@ -122,6 +131,8 @@ class App{
         item.appendChild(content);
         item.appendChild(title);
         item.appendChild(stats);
+
+     
 
         this.renderer[peerId] = new Renderer(content);
 

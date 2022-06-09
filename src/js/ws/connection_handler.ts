@@ -1,4 +1,6 @@
 import { PerformanceMeter } from "../etc/performance";
+import { Renderer } from "../video/renderer";
+import { RenderMode } from "../video/render_types";
 import { AddressLabel, RTCPackage, SocketPackage } from "./connection_types";
 
 
@@ -20,7 +22,6 @@ export class ConnectionHandler{
 
     onIDReceived(ownID : number){};
     onStreamsReceived(peerId : number, streams : readonly MediaStream[], peer : RTCPeerConnection, statsKey : string){};
-    onStreamStopped(peerId : number){};
     onPeerConnected(peerId : number){};
     onPeerDisconnected(peerId : number){};
     onEvent(ev : string, data : any){};
@@ -104,9 +105,7 @@ export class ConnectionHandler{
                 break;
             case 'establish_rtc':
                 this.peers[pkg.data.peerId] = this.createRTCPeer(pkg.data.peerId);
-                break;
-            case 'stream_stopped':
-                this.onStreamStopped(pkg.fwdAddr.sender);
+                this.send(new SocketPackage('rtc_established'))
                 break;
             default:
                 this.onEvent(pkg.event, pkg.data);
@@ -175,10 +174,10 @@ export class ConnectionHandler{
         const stringChannel = peer.createDataChannel('stringChannel', {negotiated: true, id: this.dataChannelID+1});
         (peer as any).stringChannel = stringChannel;
         binaryChannel.onmessage = (ev) => {
-            this.onRTCMessage(RTCPackage.decode(new Int8Array(ev.data)))
+            this.onRTCMessage(peerId, RTCPackage.decode(new Int8Array(ev.data)))
         };
         stringChannel.onmessage = (ev) => {
-            this.onRTCMessage(RTCPackage.decode(ev.data.toString()))
+            this.onRTCMessage(peerId, RTCPackage.decode(ev.data.toString()))
         };
 
         console.log("RTC Connection to: " + peerId + " established");
@@ -186,7 +185,17 @@ export class ConnectionHandler{
         return peer;
     }
 
-    public onRTCMessage(pkg : RTCPackage){
+    public onRTCMessage(peerId : number, pkg : RTCPackage){
+
+        let data : any = {};
+        data.peerId = peerId;
+        data.content = pkg.data;
+        switch(pkg.type){
+            case RTCPackage.Type.WireframeData:
+                data.mode = RenderMode.FaceLandmarks;
+                this.onEvent('render_update', data);
+            break;
+        }
         //console.log(pkg.event);
     }
 

@@ -1,14 +1,15 @@
 
-import { NormalizedLandmarkList } from "@mediapipe/face_mesh";
 import { Encoder } from "../video/encoder";
+import { Renderer, RenderObject } from "../video/renderer";
+import { RenderMode } from "../video/render_types";
 import { ConnectionHandler } from "../ws/connection_handler";
-import { AddressLabel, CallMode, RTCPackage, SocketPackage } from "../ws/connection_types";
+import { AddressLabel, RTCPackage, SocketPackage } from "../ws/connection_types";
 
 
 export enum Data{
-    VIDEO_START,
-    VIDEO_END,
-    LANDMARK
+    StartReception,
+    StopReception,
+    Render,
 }
 
 export class VideoConference{
@@ -29,12 +30,9 @@ export class VideoConference{
         this.connectionHandler = new ConnectionHandler(); 
         
         this.connectionHandler.onStreamsReceived = (peerId,  streams, peer, statsKey) => {
-            this.onPeerData(peerId, Data.VIDEO_START, {stream : streams[0], peer : peer, statsKey : statsKey })
+            this.onPeerData(peerId, Data.Render, {renderObject: new RenderObject(RenderMode.Video, {stream : streams[0], peer : peer, statsKey : statsKey }, true)})
         };
 
-        this.connectionHandler.onStreamStopped = (peerId : number) => {
-            this.onPeerData(peerId, Data.VIDEO_END);
-        };
         
         this.connectionHandler.onPeerConnected = (peerId) => {console.log("opc"); this.onPeerConnected(peerId)};
         this.connectionHandler.onPeerDisconnected = (peerID) => {this.onPeerDisconnected(peerID)};
@@ -77,6 +75,14 @@ export class VideoConference{
             case 'stop_transmission':
                 this.stopTransmission(data.peerId, data.mode);
                 break;
+            case 'start_reception':
+                this.onPeerData(data.peerId, Data.StartReception, {mode : data.mode});
+                break;
+            case 'stop_reception':
+                this.onPeerData(data.peerId, Data.StopReception);
+                break;
+            case 'render_update':
+                this.onPeerData(data.peerId, Data.Render, {renderObject: new RenderObject(data.mode, data.content)});
             default:
 
         }
@@ -97,7 +103,7 @@ export class VideoConference{
     }
 
     
-    changeTransmissionMode(mode : CallMode){
+    changeTransmissionMode(mode : RenderMode){
         this.connectionHandler.AwaitReply(new SocketPackage('change_mode', {'mode' : mode})).then(()=>{},
         (e)=>{
             console.error(e);
@@ -105,41 +111,43 @@ export class VideoConference{
     }
 
 
-    private async startTransmission(peerId : number, mode : CallMode){
+
+    private async startTransmission(peerId : number, mode : RenderMode){
+        this.connectionHandler.send(new SocketPackage('start_reception', {peerId : this.peerId, mode : mode}, new AddressLabel(this.peerId, peerId)));
+
         switch(mode){
-            case CallMode.None:
+            case RenderMode.None:
                 break;
-            case CallMode.Video:
+            case RenderMode.Video:
                 console.log(this);
                 let stream = await this.encoder.getStream();
                 this.connectionHandler.addStream(peerId, stream);
                 break;
-            case CallMode.Wireframe:
+            case RenderMode.FaceLandmarks:
                 this.encoder.start(peerId, Encoder.Encoding.Wireframe);
                 break;
             default:
-                throw(new Error("call mode not implemented"));
+                throw(new Error("render mode not available"));
         }
+        
     }
 
  
 
-    private stopTransmission(peerId : number, mode : CallMode){
-
+    private stopTransmission(peerId : number, mode : RenderMode){
         switch(mode){
-            case CallMode.None:
+            case RenderMode.None:
                 break;
-            case CallMode.Video:
+            case RenderMode.Video:
                 this.connectionHandler.removeStream(peerId);
-                this.connectionHandler.send(new SocketPackage('stream_stopped', null, new AddressLabel(this.connectionHandler.ownID, peerId)));
                 break;
-            case CallMode.Wireframe:
+            case RenderMode.FaceLandmarks:
                 this.encoder.stop(peerId);
             break;
 
-            default:
-                
+            default:   
         }
+        this.connectionHandler.send(new SocketPackage('stop_reception', {peerId : this.peerId, mode : mode}, new AddressLabel(this.peerId, peerId)));
     }
 
 }

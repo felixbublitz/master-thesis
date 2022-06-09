@@ -1,7 +1,9 @@
 
 import {WebSocket as WSWebSocket} from "ws";
-import { CallMode, SocketPackage } from "./connection_types";
+import { SocketPackage } from "./connection_types";
 import * as EventEmitter from "events";
+import { Renderer } from "../video/renderer";
+import { RenderMode } from "../video/render_types";
 
 
 export class CallPeer extends EventEmitter{
@@ -9,9 +11,9 @@ export class CallPeer extends EventEmitter{
     readonly internal_id : number;
     private readonly socket : WSWebSocket;
     static init_peers = 0;
-    private internal_mode = CallMode.None; 
+    private internal_mode = RenderMode.None; 
 
-    get mode() : CallMode{
+    get mode() : RenderMode{
         return this.internal_mode;
     }
 
@@ -25,11 +27,15 @@ export class CallPeer extends EventEmitter{
         this.socket = socket;
     }
 
-    changeMode(mode : CallMode){
+    changeMode(mode : RenderMode){
         console.info("change to mode: " + mode);
         let lastMode = this.internal_mode;
         this.internal_mode = mode;
         this.emit("modechanged", this,lastMode);
+    }
+
+    connectionEstablished(){
+        this.emit("rtcestablished", this);
     }
 
     destroy(){
@@ -57,7 +63,7 @@ export class CallSession{
         this.peers = new Array<CallPeer>();
     }
 
-    private onModeChanged(triggerPeer : CallPeer, lastMode : CallMode){
+    private onModeChanged(triggerPeer : CallPeer, lastMode : RenderMode){
         for(const peer of this.peers){
             if(peer != triggerPeer){
                 peer.send(new SocketPackage('stop_transmission', {peerId : triggerPeer.id,  mode : lastMode}));
@@ -70,10 +76,12 @@ export class CallSession{
         peer.callSession = this;
         this.peers.push(peer);
         peer.on('modechanged', (peer, lastMode)=> {this.onModeChanged(peer, lastMode)});
+        peer.on('rtcestablished', (peer) => {
+            //this.sendTransmissionRequests(peer);
+        })
 
         if(this.peers.length > 1){
             this.establishRTCConnection(peer);
-            this.sendTransmissionRequests(peer);
         }
     }
 

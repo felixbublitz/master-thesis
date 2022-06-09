@@ -1,12 +1,5 @@
 import { Namespace } from "socket.io";
 
-export enum CallMode{
-    None = 0,
-    Video = 1,
-    Wireframe = 2,
-    Reconstruct = 3
-}
-
 
 export interface AdrSocket extends WebSocket{
     id : number;
