@@ -1,79 +1,3 @@
-const CSV_NEW_COLUMN = ',';
-const CSV_NEW_ROW = '\n';
-
-export class PerformanceStatistic{
-
-    readonly fileName = 'stats.csv';
-    static samplingTime = 1000; //ms
-    private readonly fields : Array<string>;
-    private readonly datasets : Array<PerformanceStatistic.Dataset>;
-    private readonly startTime;
-
-    constructor(){
-        this.datasets = new Array<PerformanceStatistic.Dataset>();
-        this.fields = new Array<string>();
-        this.startTime = Date.now();
-        this.fields.push('time');
-    }
-
-    add(dataset : PerformanceStatistic.Dataset){
-        this.datasets.push(dataset);
-        dataset.items.forEach((item, title) => {
-            if(!this.fields.includes(title))
-                this.fields.push(title);
-        });
-    }
-
-    private serialize() : string{
-        let out = '';
-
-        //header
-        this.fields.forEach(field => {
-            out += field + CSV_NEW_COLUMN
-        });
-        out = out.slice(0, -1);
-        out += CSV_NEW_ROW;
-
-        //content
-        this.datasets.forEach(dataset => {
-            out += (dataset.timestamp - this.startTime) + CSV_NEW_COLUMN;
-            dataset.items.forEach((value, title)=>{
-                out += value + CSV_NEW_COLUMN
-            });
-            out = out.slice(0, -1);
-            out += CSV_NEW_ROW;
-            
-        });
-       
-        return out;
-    }
-
-    public export(){
-        var element = document.createElement('a');
-        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(this.serialize()));
-        element.setAttribute('download', this.fileName);
-        element.style.display = 'none';
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-    }
-}
-
-export namespace PerformanceStatistic{
-    export class Dataset{
-        readonly timestamp : number;
-        readonly items : Map<string, number>
-        constructor(){
-            this.timestamp = Date.now();
-            this.items = new Map();
-        }
-
-        add(title : string, value : number){
-            this.items.set(title, value);
-        }
-    }
-}
-
 
 export class PerformanceMeter{
     private readonly items : Map<string, PerformanceMeter.MeasuringItem>;
@@ -93,6 +17,7 @@ export class PerformanceMeter{
         this.items.forEach((item, key)=>{
             map.set(key, item.getAverage());
             item.reset();
+            this.items.clear();
         })
 
         return new PerformanceMeter.Sample(window.performance.now() - this.lastSample,  map);
@@ -188,6 +113,8 @@ export namespace PerformanceMeter{
         }
     
         reset(){
+            if(this.measuring)
+                this.stopMeasuring();
             this.value = 0;
             this.samples = 0;
         }
