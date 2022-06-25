@@ -2,7 +2,6 @@
 import {WebSocket as WSWebSocket} from "ws";
 import { SocketPackage } from "./connection_types";
 import * as EventEmitter from "events";
-import { Renderer } from "../video/renderer";
 import { RenderMode } from "../video/render_types";
 
 

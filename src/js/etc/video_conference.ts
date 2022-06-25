@@ -15,6 +15,7 @@ export enum Data{
 export class VideoConference{
     readonly connectionHandler;
     private encoder : Encoder;
+    public mode  = RenderMode.None;
 
     onConnected(){};
     onPeerConnected(peerId : number){}
@@ -104,6 +105,7 @@ export class VideoConference{
 
     
     changeTransmissionMode(mode : RenderMode){
+        this.mode = mode;
         this.connectionHandler.AwaitReply(new SocketPackage('change_mode', {'mode' : mode})).then(()=>{},
         (e)=>{
             console.error(e);

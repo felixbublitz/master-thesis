@@ -3,7 +3,6 @@ import {SocketPackage} from "./ws/connection_types";
 import { CallPeer, CallSession } from "./ws/server_types";
 
 const express = require('express');
-const logging = require('webpack/lib/logging/runtime');
 
 class Server{
     private readonly httpPort = 80;
