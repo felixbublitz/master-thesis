@@ -2,14 +2,12 @@ import { DomElement } from "./ws/html_types";
 import { Encoder } from "./video/encoder";
 import { Data, VideoConference } from "./etc/video_conference";
 import { RenderObject, Renderer } from "./video/renderer";
-import { PerformanceStatistic } from "./etc/performance";
 import { RenderMode } from "./video/render_types";
-
-const B_TO_KB = 0.001;
+import { Sheet } from "./etc/sheet";
 
 class App{
     private readonly renderer : Array<Renderer>;
-    private readonly performanceStatistic: PerformanceStatistic;
+    private readonly performanceSheet: Sheet;
     private readonly encoder;
     private videoConference : VideoConference;
     private readonly wsAddr = "ws://127.0.0.1:2222";
@@ -19,14 +17,13 @@ class App{
     constructor(){
         this.renderer = new Array<Renderer>();
         this.encoder = new Encoder(); 
-        this.performanceStatistic = new PerformanceStatistic();
+        this.performanceSheet = new Sheet();
         this.init();
     }
 
     private async init(){
         this.videoConference = new VideoConference(this.wsAddr);
         this.videoConference.setEncoder(this.encoder);
-
         this.videoConference.onPeerConnected = ((peerId : number) => {
             console.log("add peer: " + peerId)
             this.addPeer(peerId);
@@ -35,7 +32,6 @@ class App{
         this.videoConference.onPeerDisconnected = ((peerId : number) => {
             this.removePeer(peerId);
         });
-
 
         this.videoConference.onPeerData = ((peerId : number, type : Data, data? : any) => {
             switch(type){
@@ -51,8 +47,8 @@ class App{
                 default:
 
             }
-        })
-
+        });
+        
         this.videoConference.onConnected = (async () => {
             this.addPeer(this.videoConference.peerId, true);
             this.renderer[this.videoConference.peerId].setMode(RenderMode.Video);
@@ -65,9 +61,8 @@ class App{
         })
 
         document.getElementById(DomElement.BT_EXPORT).onclick = (()=>{
-            this.performanceStatistic.export();
+            this.performanceSheet.export('stats.csv');
         })
-
  
         for(let item in RenderMode){
             if(isNaN(Number(item))){
@@ -86,35 +81,31 @@ class App{
     }
 
 
-    private  updateStats(){
+    private updateStats(){
+        let row = new Sheet.Row();
+        let sample = this.encoder.getPerformanceSample();
 
-        let dataset = new PerformanceStatistic.Dataset();
-        let sample;
-        
-        sample = this.encoder.getPerformanceSample();
+        row.add("video mode", this.videoConference.mode);
 
         if(this.videoConference.connectionHandler != null){
             this.videoConference.peers.forEach(async (peer, peerID)=>{
                 sample = await this.videoConference.connectionHandler.getPerformanceSample(peerID);
-                if(sample.has('transmissionTime')) dataset.add('transmission [Peer ' + peerID + ']', sample.get('transmissionTime'));
+                if(sample.has('transmissionTime')) row.add('transmission [Peer ' + peerID + ']', sample.get('transmissionTime'));
             })
         }
-
 
         this.renderer.forEach((renderer, peerID) => {
             try{
                 sample = renderer.getPerformanceSample();
-                if(sample.has('decoding')) dataset.add('decoding [Peer ' + peerID + ']', sample.get('decoding'));
+                if(sample.has('decoding')) row.add('decoding [Peer ' + peerID + ']', sample.get('decoding'));
             }catch(e){
 
             }
             
         });
 
-        console.log(dataset);
-        this.performanceStatistic.add(dataset);
-        
-      
+        this.performanceSheet.add(row);
+        console.log(row.items);
     }
 
     private addPeer(peerId : number, self? : boolean){
@@ -132,12 +123,8 @@ class App{
         item.appendChild(title);
         item.appendChild(stats);
 
-     
-
         this.renderer[peerId] = new Renderer(content);
-
         document.getElementById(DomElement.UL_PEER_ITEMS).appendChild(item);
-        
     }
 
     private removePeer(peerId : number){

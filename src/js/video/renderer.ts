@@ -3,6 +3,8 @@ import { FACEMESH_FACE_OVAL, FACEMESH_LEFT_EYE, FACEMESH_LEFT_EYEBROW, FACEMESH_
 import { PerformanceMeter } from "../etc/performance";
 import { RenderMode } from "./render_types";
 
+const S_TO_MS = 1000;
+
 export class Renderer{
 
     private readonly domElement : HTMLElement;
@@ -16,6 +18,10 @@ export class Renderer{
     constructor(domElement: HTMLElement){
         this.domElement = domElement;
         this.performanceMeter = new PerformanceMeter();
+    }
+
+    getMode(){
+        return this.mode;
     }
 
     setMode(mode : RenderMode){
@@ -57,6 +63,8 @@ export class Renderer{
     }
 
     clear(){
+        //this.performanceMeter.sample();
+
         if(this.domRenderer == null)
         return;
         
@@ -101,7 +109,8 @@ export class Renderer{
 
             renderObject.data.peer.getStats().then((stats : any)=>{
                 let decodeStat = stats.get(renderObject.data.statsKey);
-                this.performanceMeter.addContinious('decoding', decodeStat.totalDecodeTime, decodeStat.framesDecoded);
+                console.log(decodeStat);
+                this.performanceMeter.addContinious('decoding', decodeStat.totalDecodeTime * S_TO_MS, decodeStat.framesDecoded);
             });
         }, 1000);
     }
@@ -134,7 +143,9 @@ export class Renderer{
                 this.renderVideo(data);
             break;
             case RenderMode.FaceLandmarks:
+                this.performanceMeter.measure('decoding');
                 this.renderWireframe(data);
+                this.performanceMeter.stopMeasuring('decoding');
             break;
             default:
         }
