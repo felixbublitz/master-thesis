@@ -7,20 +7,31 @@ export class PerformanceMeter{
         this.items = new Map();
     }
 
-    sample() : PerformanceMeter.Sample{
-        if(this.lastSample == 0){
-            this.lastSample = window.performance.now();
-            return;
-        }
+    async sample() : Promise<PerformanceMeter.Sample>{
+        await this.beforeSample();
+        return new Promise((resolve, reject)=>{
+            if(this.lastSample == 0){
+                this.lastSample = window.performance.now();
+                resolve(null);
+            }
 
         let map = new Map<string, number>();
         this.items.forEach((item, key)=>{
             map.set(key, item.getAverage());
             item.reset();
-            this.items.clear();
         })
 
-        return new PerformanceMeter.Sample(window.performance.now() - this.lastSample,  map);
+        resolve(new PerformanceMeter.Sample(window.performance.now() - this.lastSample,  map));
+        });
+    }
+
+    reset(){
+        this.items.clear();
+        this.beforeSample = ()=>{};
+    }
+
+    beforeSample(){
+
     }
 
     get(key : string){
@@ -73,7 +84,7 @@ export namespace PerformanceMeter{
     export class MeasuringItem{
         private samples = 0;
         private value = 0;
-        public lastAbsoluteSamples = 0;
+        public lastAbsoluteSamples = -1;
         private lastAbsoluteValue = 0;
         private measure_start : number;
         private measuring = false;
@@ -84,9 +95,9 @@ export namespace PerformanceMeter{
         }
 
         addContinuous(absoluteValue : number, absoluteSamples : number){
-            if(absoluteSamples == 0){
-                this.lastAbsoluteSamples = absoluteSamples;
-                this.lastAbsoluteValue = absoluteValue;
+            if(this.lastAbsoluteSamples == -1){
+                this.lastAbsoluteSamples = absoluteValue;
+                this.lastAbsoluteValue = absoluteSamples;
                 return;
             }
 

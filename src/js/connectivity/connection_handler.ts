@@ -1,7 +1,6 @@
-import { PerformanceMeter } from "../etc/performance";
-import { Renderer } from "../video/renderer";
-import { RenderMode } from "../video/render_types";
-import { AddressLabel, RTCPackage, SocketPackage } from "./connection_types";
+import { PerformanceMeter } from "../measuring/performance";
+import { AddressLabel, SocketPackage } from "./connection_types";
+import { RTCChannel } from "./rtc_channel";
 
 
 enum RtcEncoding{
@@ -27,28 +26,7 @@ export class ConnectionHandler{
     onEvent(ev : string, data : any){};
 
     constructor(){
-        window.setInterval(()=>{
-            this.peers.forEach(async (peer, peerId)=>{
-                if(this.performanceMeters[peerId] == null)
-                    this.performanceMeters[peerId] = new PerformanceMeter();
-
-                let bitrate = 0;
-                let rtt = 0;
-                (await peer.getStats()).forEach(element => {
-                    if(bitrate == 0 && element.type == "candidate-pair" && element.nominated == true){
-                        bitrate = element.availableOutgoingBitrate;//element.availableIncomingBitrate; wieso nicht vorhanden???
-                        rtt = element.currentRoundTripTime;
-                    }
-                    if(element.type == 'inbound-rtp'){
-                        this.performanceMeters[peerId].addContinious('bytesPerFrame', element.bytesReceived, element.framesDecoded);
-                    }
-                   
-                });
-                if(bitrate != null && rtt != null && this.performanceMeters[peerId].get('bytesPerFrame') != null)
-                    this.performanceMeters[peerId].add('transmissionTime', this.performanceMeters[peerId].get('bytesPerFrame').getAverage()/(bitrate*BIT_TO_BYTE), 1);
-                    this.performanceMeters[peerId].add('roundTripTime', rtt, 1);
-            });
-        }, 1000);
+       
     }
 
     init(addr : string){
@@ -142,10 +120,10 @@ export class ConnectionHandler{
         })
     }
 
-    getPerformanceSample(peerId : number) : PerformanceMeter.Sample{
+    async getPerformanceSample(peerId : number) : Promise<PerformanceMeter.Sample>{
         if(this.performanceMeters[peerId] == null)
             throw("peer does not exist");
-        return this.performanceMeters[peerId].sample();
+        return await this.performanceMeters[peerId].sample();
     }
     
     removeRTCPeer(peerID : number){
@@ -168,40 +146,52 @@ export class ConnectionHandler{
             this.onStreamsReceived(peerId, ev.streams, peer, statsKey)
         };
         peer.onnegotiationneeded = () => this.onNegotiationNeeded(peerId);
-        
-        const binaryChannel = peer.createDataChannel('binaryData', {negotiated: true, id: this.dataChannelID});
-        (peer as any).binaryChannel = binaryChannel;
-        const stringChannel = peer.createDataChannel('stringChannel', {negotiated: true, id: this.dataChannelID+1});
-        (peer as any).stringChannel = stringChannel;
-        binaryChannel.onmessage = (ev) => {
-            this.onRTCMessage(peerId, RTCPackage.decode(new Int8Array(ev.data)))
-        };
-        stringChannel.onmessage = (ev) => {
-            this.onRTCMessage(peerId, RTCPackage.decode(ev.data.toString()))
-        };
+
+        let rtcChannel = new RTCChannel(peer, peerId);
+
+        rtcChannel.onData = (peerId, dataIdentifier, data)=>{
+            if(dataIdentifier == RTCChannel.DataType.FrameData)
+                this.onEvent('render_update', {peerId : peerId, content: data});
+
+        }
+
+        (peer as any).rtcChannel = rtcChannel;
 
         console.log("RTC Connection to: " + peerId + " established");
         this.onPeerConnected(peerId);
+
+        this.performanceMeters[peerId] = new PerformanceMeter();
+
+        this.performanceMeters[peerId].beforeSample = async()=>{
+            let bitrate = 0;
+            let rtt = 0;
+            await (async ()=>{
+                (await peer.getStats()).forEach(element => {
+                    if(bitrate == 0 && element.type == "candidate-pair" && element.nominated == true){
+                        bitrate = element.availableOutgoingBitrate;//element.availableIncomingBitrate; wieso nicht vorhanden???
+                        rtt = element.currentRoundTripTime;
+                    }
+                    if(element.type == 'inbound-rtp'){
+                        this.performanceMeters[peerId].addContinious('bytesPerFrame', element.bytesReceived, element.framesDecoded);
+                    }
+                });
+                if(bitrate != null && rtt != null && this.performanceMeters[peerId].get('bytesPerFrame') != null){
+                    this.performanceMeters[peerId].add('transmissionTime', this.performanceMeters[peerId].get('bytesPerFrame').getAverage()/(bitrate*BIT_TO_BYTE), 1);
+                    this.performanceMeters[peerId].add('roundTripTime', rtt, 1);
+                }
+            })();
+            
+           
+        }
+        this.performanceMeters[peerId].sample();
+
         return peer;
     }
 
-    public onRTCMessage(peerId : number, pkg : RTCPackage){
 
-        let data : any = {};
-        data.peerId = peerId;
-        data.content = pkg.data;
-        switch(pkg.type){
-            case RTCPackage.Type.WireframeData:
-                data.mode = RenderMode.FaceLandmarks;
-                this.onEvent('render_update', data);
-            break;
-        }
-        //console.log(pkg.event);
-    }
 
-    public sendRTCData(peerId : number, pkg : RTCPackage){
-        if(RTC_DATA_ENCODING == RtcEncoding.Binary) (this.peers[peerId] as any).binaryChannel.send(pkg.encodeBinary().buffer);
-        if(RTC_DATA_ENCODING == RtcEncoding.String) (this.peers[peerId] as any).stringChannel.send(pkg.encodeString());       
+    public sendRTCData(peerId : number, identifier : number, data : Int8Array){
+        ((this.peers[peerId] as any).rtcChannel as RTCChannel).send(identifier, data);
     }
 
     private async onNegotiationNeeded(peerId : number){
@@ -250,3 +240,5 @@ export class ConnectionHandler{
         this.peers[peerId].removeTrack((<any>this.peers[peerId]).sender);
     }
 }
+
+

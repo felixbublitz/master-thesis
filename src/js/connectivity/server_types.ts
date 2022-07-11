@@ -2,7 +2,7 @@
 import {WebSocket as WSWebSocket} from "ws";
 import { SocketPackage } from "./connection_types";
 import * as EventEmitter from "events";
-import { RenderMode } from "../video/render_types";
+import { CodecType } from "../encoding/types";
 
 
 export class CallPeer extends EventEmitter{
@@ -10,10 +10,10 @@ export class CallPeer extends EventEmitter{
     readonly internal_id : number;
     private readonly socket : WSWebSocket;
     static init_peers = 0;
-    private internal_mode = RenderMode.None; 
+    private internalTransmissioModeName : string; 
 
-    get mode() : RenderMode{
-        return this.internal_mode;
+    get type() : string{
+        return this.internalTransmissioModeName;
     }
 
     get id() : number{
@@ -26,10 +26,10 @@ export class CallPeer extends EventEmitter{
         this.socket = socket;
     }
 
-    changeMode(mode : RenderMode){
-        console.info("change to mode: " + mode);
-        let lastMode = this.internal_mode;
-        this.internal_mode = mode;
+    changeTransmissionMode(transmissionModelName : string){
+        console.info("change to mode: " + transmissionModelName);
+        let lastMode = this.internalTransmissioModeName;
+        this.internalTransmissioModeName = transmissionModelName;
         this.emit("modechanged", this,lastMode);
     }
 
@@ -62,11 +62,11 @@ export class CallSession{
         this.peers = new Array<CallPeer>();
     }
 
-    private onModeChanged(triggerPeer : CallPeer, lastMode : RenderMode){
+    private onModelChanged(triggerPeer : CallPeer, lastTransmissionModel : string){
         for(const peer of this.peers){
             if(peer != triggerPeer){
-                peer.send(new SocketPackage('stop_transmission', {peerId : triggerPeer.id,  mode : lastMode}));
-                peer.send(new SocketPackage('start_transmission', {peerId : triggerPeer.id,  mode : triggerPeer.mode}));
+                peer.send(new SocketPackage('stop_transmission', {peerId : triggerPeer.id,  transmissionModelName : lastTransmissionModel}));
+                peer.send(new SocketPackage('start_transmission', {peerId : triggerPeer.id,  transmissionModelName : triggerPeer.type}));
             }
         }
     }
@@ -74,7 +74,7 @@ export class CallSession{
     join(peer : CallPeer){
         peer.callSession = this;
         this.peers.push(peer);
-        peer.on('modechanged', (peer, lastMode)=> {this.onModeChanged(peer, lastMode)});
+        peer.on('modechanged', (peer, lastMode)=> {this.onModelChanged(peer, lastMode)});
         peer.on('rtcestablished', (peer) => {
             //this.sendTransmissionRequests(peer);
         })
@@ -93,8 +93,8 @@ export class CallSession{
     private sendTransmissionRequests(initiator : CallPeer){
         for(const peer of this.peers){
             if(peer.id != initiator.id){
-                peer.send(new SocketPackage('start_transmission', {peerId : initiator.id, mode : initiator.mode}));
-                initiator.send(new SocketPackage('start_transmission', {peerId : peer.id, mode : peer.mode}));
+                peer.send(new SocketPackage('start_transmission', {peerId : initiator.id, mode : initiator.type}));
+                initiator.send(new SocketPackage('start_transmission', {peerId : peer.id, mode : peer.type}));
             }
         }
     }

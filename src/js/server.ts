@@ -1,6 +1,6 @@
-import {WebSocket as WSWebSocket, WebSocketServer, MessageEvent} from "ws";
-import {SocketPackage} from "./ws/connection_types";
-import { CallPeer, CallSession } from "./ws/server_types";
+import {WebSocket as WSWebSocket, WebSocketServer} from "ws";
+import {SocketPackage} from "./connectivity/connection_types";
+import { CallPeer, CallSession } from "./connectivity/server_types";
 
 const express = require('express');
 
@@ -74,9 +74,9 @@ class Server{
             case 'peer_exists':
                 return pkg.reply({'exists' : this.getPeer(pkg.data.peerId) == null ? false : true});
 
-            case 'change_mode':
+            case 'change_transmission_mode':
                 if(peer.callSession == null) return pkg.replyError("you have to be in a call to change the mode");
-                peer.changeMode(pkg.data.mode);
+                peer.changeTransmissionMode(pkg.data.transmissionModelName);
                 break;
 
             case 'rtc_established':
