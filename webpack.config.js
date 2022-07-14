@@ -2,6 +2,8 @@ const path = require('path');
 var fs = require('fs');
 let url = require('url');
 let webpack = require('webpack');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+
 
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
@@ -47,6 +49,10 @@ const webConfig = {
         ]
     },
     plugins: [
+        new CopyWebpackPlugin({
+            patterns: [
+                { from: 'src/assets', to: 'assets' }
+            ]}),
          new webpack.DllReferencePlugin({
             context: __dirname,
             manifest: require( './dist/library/web_library.json')

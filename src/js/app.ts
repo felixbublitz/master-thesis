@@ -5,6 +5,8 @@ import { VideoRenderModel } from "./renderer/models/video_render_model";
 import { FaceMaskCodec } from "./encoding/codecs/face_mask_codec";
 import { FaceMaskRenderModel } from "./renderer/models/face_mask_render_model";
 import { TransmissionModel } from "./transmission_model";
+import { FaceMask3DRenderModel } from "./renderer/models/face_mask_3d_render_model";
+import { FaceMaskCodec3d } from "./encoding/codecs/face_mask_codec_3d";
 
 const wsAddr = "ws://127.0.0.1:2222";
 
@@ -18,10 +20,12 @@ class App{
     constructor(wsAddress : string){
         this.performanceSheet = new Sheet();
         this.videoConference = new VideoConference(wsAddress);
-        this.videoConference.addTransmissionModel({name : "Video", codec: null, renderModel: new VideoRenderModel()} as TransmissionModel)
-        this.videoConference.addTransmissionModel({name : "FaceMask", codec: new FaceMaskCodec(), renderModel: new FaceMaskRenderModel()} as TransmissionModel)
 
         //init available transmission models
+        this.videoConference.addTransmissionModel({name : "Video", codec: null, renderModel: new VideoRenderModel()} as TransmissionModel)
+        this.videoConference.addTransmissionModel({name : "FaceMask", codec: new FaceMaskCodec(), renderModel: new FaceMaskRenderModel()} as TransmissionModel)
+        this.videoConference.addTransmissionModel({name : "FaceMask 3D", codec: new FaceMaskCodec3d(), renderModel: new FaceMask3DRenderModel()} as TransmissionModel)
+
         
         this.videoConference.onConnected = (async (dom : HTMLElement) => {
             this.addPeer(this.videoConference.peerId, dom, true);

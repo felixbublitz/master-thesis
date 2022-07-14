@@ -2,7 +2,6 @@
 import {WebSocket as WSWebSocket} from "ws";
 import { SocketPackage } from "./connection_types";
 import * as EventEmitter from "events";
-import { CodecType } from "../encoding/types";
 
 
 export class CallPeer extends EventEmitter{
@@ -87,15 +86,6 @@ export class CallSession{
     private establishRTCConnection(initiator : CallPeer){
         for(const peer of this.peers){
             if(peer.id != initiator.id) initiator.send(new SocketPackage('establish_rtc', {peerId : peer.id}));
-        }
-    }
-
-    private sendTransmissionRequests(initiator : CallPeer){
-        for(const peer of this.peers){
-            if(peer.id != initiator.id){
-                peer.send(new SocketPackage('start_transmission', {peerId : initiator.id, mode : initiator.type}));
-                initiator.send(new SocketPackage('start_transmission', {peerId : peer.id, mode : peer.type}));
-            }
         }
     }
 

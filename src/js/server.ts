@@ -15,7 +15,8 @@ class Server{
         this.app.use(express.static(__dirname + '/app'));
         this.app.use('/app', express.static(__dirname + '/app'));
         this.app.use('/library', express.static(__dirname + '/library'));
-     
+        this.app.use('/assets', express.static(__dirname + '/assets'));
+
         this.app.listen(this.httpPort, () => {})
 
         this.server = new WebSocketServer({ port : this.wsPort });
