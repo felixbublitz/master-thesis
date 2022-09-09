@@ -2,11 +2,13 @@ import { DomElement } from "./connectivity/html_types";
 import { VideoConference } from "./video_conference";
 import { Sheet } from "./measuring/sheet";
 import { VideoRenderModel } from "./renderer/models/video_render_model";
-import { FaceMaskCodec } from "./encoding/codecs/face_mask_codec";
+import { FaceMaskCodec } from "./encoding/codecs/old/face_mask_codec";
 import { FaceMaskRenderModel } from "./renderer/models/face_mask_render_model";
 import { TransmissionModel } from "./transmission_model";
 import { FaceMask3DRenderModel } from "./renderer/models/face_mask_3d_render_model";
-import { FaceMaskCodec3d } from "./encoding/codecs/face_mask_codec_3d";
+import { FaceMaskCodec3d } from "./encoding/codecs/old/face_mask_codec_3d";
+import { HeadRenderModel } from "./renderer/models/head_render_model";
+import { MediapipeLandmarksCodec } from "./encoding/codecs/mediapipe_landmarks_codec";
 
 const wsAddr = "ws://127.0.0.1:2222";
 
@@ -23,8 +25,9 @@ class App{
 
         //init available transmission models
         this.videoConference.addTransmissionModel({name : "Video", codec: null, renderModel: new VideoRenderModel()} as TransmissionModel)
-        this.videoConference.addTransmissionModel({name : "FaceMask", codec: new FaceMaskCodec(), renderModel: new FaceMaskRenderModel()} as TransmissionModel)
+        this.videoConference.addTransmissionModel({name : "FaceMask", codec: new MediapipeLandmarksCodec(), renderModel: new FaceMaskRenderModel()} as TransmissionModel)
         this.videoConference.addTransmissionModel({name : "FaceMask 3D", codec: new FaceMaskCodec3d(), renderModel: new FaceMask3DRenderModel()} as TransmissionModel)
+        this.videoConference.addTransmissionModel({name : "Head 3D", codec: new MediapipeLandmarksCodec(), renderModel: new HeadRenderModel()} as TransmissionModel)
 
         
         this.videoConference.onConnected = (async (dom : HTMLElement) => {
@@ -63,21 +66,24 @@ class App{
 
     private async updateStats(){
         let row = new Sheet.Row();
-       // let sample = await this.encoder.getPerformanceSample();
+        let sample = await this.videoConference.encoder.getPerformanceSample();
+        console.log(sample);
 
-        //row.add("codec", this.videoConference.receivingModel.name);
+        if(sample.has('encoding')) row.add('Encoding', sample.get('encoding'));
+        
+        row.add("codec", this.videoConference.receivingModel.name);
 
         if(this.videoConference.connectionHandler != null){
             this.videoConference.peers.forEach(async (peer, peerID)=>{
-               // sample = await this.videoConference.connectionHandler.getPerformanceSample(peerID);
-                //if(sample.has('transmissionTime')) row.add('transmission [Peer ' + peerID + ']', sample.get('transmissionTime'));
+                sample = await this.videoConference.connectionHandler.getPerformanceSample(peerID);
+                if(sample.has('transmissionTime')) row.add('transmission [Peer ' + peerID + ']', sample.get('transmissionTime'));
             })
         }
         
-        /*await Promise.all(this.renderer.map(async (renderer, peerID) => {
+        await Promise.all(this.videoConference.renderer.map(async (renderer, peerID) => {
                 sample = await renderer.getPerformanceSample();
-                if(sample.has('decoding')) row.add('decoding [Peer ' + peerID + ']', sample.get('decoding'));
-        }));*/
+                if(sample.has('render')) row.add('render [Peer ' + peerID + ']', sample.get('render'));
+        }));
 
         this.performanceSheet.add(row);
         console.log(row.items);

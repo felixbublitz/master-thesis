@@ -8,7 +8,7 @@ export class VideoRenderModel implements RenderModel{
 
     domRenderer : HTMLVideoElement = document.createElement('video');
     private width = 320;
-    private height = 240;
+    private height = 180;
 
     constructor(){
         this.domRenderer.width = this.width;

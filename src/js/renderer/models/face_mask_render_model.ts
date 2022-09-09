@@ -8,7 +8,7 @@ export class FaceMaskRenderModel implements RenderModel{
 
     domRenderer : HTMLCanvasElement = document.createElement('canvas');
     private width = 320;
-    private height = 240;
+    private height = 180;
 
     constructor(){
         this.domRenderer.width = this.width;

@@ -8,8 +8,8 @@ import { TransmissionModel } from "./transmission_model";
 
 export class VideoConference{
     readonly connectionHandler;
-    private readonly encoder : Encoder;
-    private readonly renderer : Array<Renderer>;
+    readonly encoder : Encoder;
+    readonly renderer : Array<Renderer>;
     transmissionModels : Array<TransmissionModel>;
     receivingModel : TransmissionModel;
 
@@ -31,7 +31,9 @@ export class VideoConference{
 
     constructor(wsAddr : string){
         this.transmissionModels = new Array<TransmissionModel>();
-        this.addTransmissionModel({name: "None"} as TransmissionModel)
+        const nModel = {name: "None"} as TransmissionModel;
+        this.addTransmissionModel(nModel);
+        this.receivingModel = nModel;
 
         this.connectionHandler = new ConnectionHandler(); 
         this.renderer = new Array<Renderer>();

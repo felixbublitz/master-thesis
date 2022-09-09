@@ -12,34 +12,45 @@ import {
   import { 
     FACE_MESH_INDEX_BUFFER, 
     FACE_MESH_UV  
-  } from './face_geom.js';
-import { Coordinates } from "../../encoding/types";
+  } from '../../mediapipe/face_geom.js';
+import { Helper } from "../../mediapipe/helper";
+import { EncodableArray, EncodableCoordinates } from "../../encoding/types";
   
 
 
 export class FaceMask3DRenderModel implements RenderModel{
 
-    domRenderer : HTMLCanvasElement = document.createElement('canvas');
+    domRenderer : HTMLCanvasElement;
     private width = 320;
-    private height = 240;
+    private height = 180;
     private scene : THREE.Scene;
     private renderer : THREE.WebGLRenderer;
     private camera : THREE.OrthographicCamera;
-    private faces : any;
+    private faces : THREE.Object3D;
     private material : MeshBasicMaterial;
 
 
     constructor(){
-        this.domRenderer.width = this.width;
-        this.domRenderer.height = this.height;
+      this.domRenderer = document.createElement('canvas');
+      this.domRenderer.width = this.width;
+      this.domRenderer.height = this.height;
+      
+
+
         this.scene = new THREE.Scene();
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.domRenderer,
+            antialias : true,
             devicePixelRation: window.devicePixelRatio || 1
         } as WebGLRendererParameters);
 
         this.renderer.setClearColor( 0xffffff );
 
+        const loader = new THREE.TextureLoader();
+        loader.load('../assets/background.png' , (texture) => {
+          this.scene.background = texture;
+        });
+     
 
         var textureLoader = new THREE.TextureLoader();
         textureLoader.load('../assets/texture.jpg', (texture) => {
@@ -79,20 +90,26 @@ export class FaceMask3DRenderModel implements RenderModel{
     private addFaces(landmarks : any){
         let geometry = this.makeGeometry(landmarks);
         this.faces = new THREE.Mesh(geometry, this.material);
-        this.faces.position.set(0, 0, 0);
-        this.faces.scale.set(this.width, this.height, this.width);
+
+        const scaledLandmarks =  Helper.scaleLandmarks(landmarks, 320, 180);
+
+        this.faces.applyQuaternion(Helper.getRotation(scaledLandmarks).invert());
+
+        this.faces.scale.copy(new THREE.Vector3(this.width/2, this.height/2, this.width/2).multiplyScalar(2));
+        this.faces.position.copy(Helper.getTranslation(scaledLandmarks).multiplyScalar(-1));
+
+
         this.scene.add(this.faces);
     }
 
-    private makeGeometry = (landmarks : Array<Coordinates>) => {
+    private makeGeometry = (landmarks : EncodableArray) => {
         let geometry = new BufferGeometry();
         let vertices = [];
         let uvs = [];
-      
 
         for(let i = 0; i < landmarks.length; i++) {
-          let {x, y, z} = landmarks[i];
-          let vertex =  [x, y, z];
+          const coordinates = landmarks.getValue(i);
+          let vertex =  [coordinates.x, coordinates.y, coordinates.z];
           vertices.push(...vertex);
         }
 
