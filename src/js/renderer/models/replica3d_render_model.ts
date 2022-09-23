@@ -10,7 +10,7 @@ import {
   } from 'three';
 import { Helper } from "../../mediapipe/helper";
 
-export class HeadRenderModel implements RenderModel{
+export class Replica3DRenderModel implements RenderModel{
 
   domRenderer : HTMLCanvasElement = document.createElement('canvas');
   private width = 320;
@@ -90,7 +90,7 @@ export class HeadRenderModel implements RenderModel{
  
 
   renderFrame(renderObject: RenderObject): void {
-    let landmarks = Helper.scaleLandmarks(renderObject.data.data, 320, 180);
+    let landmarks = Helper.scaleLandmarks(renderObject.data, 320, 180);
 
     if (landmarks != null){
       this.group.clear();

@@ -49,6 +49,12 @@ const webConfig = {
         ]
     },
     plugins: [
+        new webpack.ProvidePlugin({
+            process: 'process/browser',
+          }),
+          new webpack.ProvidePlugin({
+            Buffer: ['buffer', 'Buffer'],
+        }),
         new CopyWebpackPlugin({
             patterns: [
                 { from: 'src/assets', to: 'assets' }
@@ -70,6 +76,10 @@ const webConfig = {
     ],
     resolve: {
         extensions: ['.ts', '.js'],
+        alias : {
+            stream: require.resolve('stream-browserify'),
+            zlib: require.resolve('browserify-zlib'),  
+        }
     },
     output: {
         filename: '[name]/main.js',

@@ -1,10 +1,11 @@
 import { drawConnectors } from "@mediapipe/drawing_utils";
 import { FACEMESH_FACE_OVAL, FACEMESH_LEFT_EYE, FACEMESH_LEFT_EYEBROW, FACEMESH_LEFT_IRIS, FACEMESH_LIPS, FACEMESH_RIGHT_EYE, FACEMESH_RIGHT_EYEBROW, FACEMESH_RIGHT_IRIS, FACEMESH_TESSELATION } from "@mediapipe/face_mesh";
+import { EncodableArray } from "../../encoding/types";
 import { PerformanceMeter } from "../../measuring/performance";
 import { RenderObject } from "../renderer";
 import { RenderModel } from "./render_model";
 
-export class FaceMaskRenderModel implements RenderModel{
+export class WireframeRenderModel implements RenderModel{
 
     domRenderer : HTMLCanvasElement = document.createElement('canvas');
     private width = 320;
@@ -27,7 +28,7 @@ export class FaceMaskRenderModel implements RenderModel{
         context.save();
         context.clearRect(0,0, this.width, this.height);
        
-        let landmarks = renderObject.data.data;
+        let landmarks = renderObject.data as Array<any>;
         drawConnectors(context, landmarks, FACEMESH_TESSELATION,{color: '#C0C0C070', lineWidth: 1});
         drawConnectors(context, landmarks, FACEMESH_RIGHT_EYE, {color: '#C0C0C070'});
         drawConnectors(context, landmarks, FACEMESH_RIGHT_EYEBROW, {color: '#C0C0C070'});

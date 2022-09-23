@@ -5,8 +5,11 @@ export enum CodecType{
 }
 
 
+export interface EncodableData{
 
-export class EncodablePrimitive{
+}
+
+export class EncodablePrimitive implements EncodableData{
     constructor(...args : any){
 
     }
@@ -24,7 +27,7 @@ export class EncodableCoordinates extends EncodablePrimitive {
     private z:EncodableNumber;
 
     getValue(){
-        return {x : this.x, y : this.y, z: this.z}
+        return {x : this.x.getValue(), y : this.y.getValue(), z: this.z.getValue()}
     }
 
     static getEncodedSize(precision: number, includeHeader: boolean): number {
@@ -94,31 +97,38 @@ export class EncodableNumber extends EncodablePrimitive{
     }
 
     public encode(precision : number) : Int8Array{
-        if(precision >4)
-           throw("byte size must be <= 4");
+        //if(precision >4)
+           //throw("byte size must be <= 4");
 
-        const digits = EncodableNumber.getDigitCountFromBytes(precision);
-        const normalizedNumber = Math.round(this.value * Math.pow(10, digits));
-        const out = new Int8Array(precision);
-        const mask = 255; //111111111
+        //const digits = EncodableNumber.getDigitCountFromBytes(precision);
+        //const normalizedNumber = Number(Math.round(this.value * Math.pow(10, digits)));
+        const out = new ArrayBuffer(precision);
+        //const mask = Number(255); //11111111
+
+        new DataView(out).setFloat64(0,this.value);
+     
+
         
-        for(let i=0; i<precision; i++){
-            out[i] = (normalizedNumber >> 8*i) & mask;
-        }
-        return out;
+
+        /*for(let i=0; i<precision; i++){
+            out[i] = (normalizedNumber >> (8*i)) & mask;
+        }*/
+        return new Int8Array(out);
     }
 
     static decode(binary : Int8Array) : EncodableNumber{
-        let out = 0;
-        const mask = 255; //111111111
+        //let out = 0;
+        //const mask = 255; //11111111
 
-        const digits = EncodableNumber.getDigitCountFromBytes(binary.length);
+        /*const digits = EncodableNumber.getDigitCountFromBytes(binary.length);
         for(let i=0; i<binary.length; i++){
             if(i == binary.length-1) out += (binary[i]) << 8*i;
             else out += (binary[i] & mask) << 8*i;
         }
-        out = parseFloat((out * (1/Math.pow(10, digits))).toPrecision(digits));
-        return new EncodableNumber(out);
+        out = parseFloat((out * (1/Math.pow(10, digits))).toPrecision(digits));*/
+
+
+        return new EncodableNumber(new DataView(binary.buffer,0).getFloat64(0));
     }
 
     private static getDigitCountFromBytes(bytes : number) : number{
@@ -126,15 +136,35 @@ export class EncodableNumber extends EncodablePrimitive{
     }
 }
 
-export class EncodableArray {
+export class EncodableArray implements EncodableData {
     readonly data : Array<EncodablePrimitive>;
 
     get length(){
         return this.data.length;
     }
 
-    getValue(index : number){
+    empty(){
+        this.data.length = 0;
+    }
+
+    getValue(index? : number){
+        return index == null ? this.getArray() : this.getElement(index);
+    }
+
+    private getElement(index : number){
         return this.data[index].getValue();
+    }
+
+    static getEncodedSize(items : number, elementType : typeof EncodablePrimitive, precision: number, includeHeader: boolean){
+        return Number(includeHeader) + items * elementType.getEncodedSize(precision, false);
+    }
+
+    private getArray(){
+        const out = Array(this.length);
+        for(let i=0; i<this.length; i++){
+            out[i] = this.data[i].getValue();
+        }
+        return out;
     }
     
     constructor(){
@@ -146,6 +176,8 @@ export class EncodableArray {
     }
 
     encode(elementType : typeof EncodablePrimitive, precision: number, includeHeader = false): Int8Array {
+
+        
 
         const elementSize = elementType.getEncodedSize(precision, false)
         let out = new Int8Array(Number(includeHeader) + this.data.length * elementSize);
@@ -172,7 +204,7 @@ export class EncodableArray {
             throw("wrong size");
 
         for(let i=Number(includesHeader); i<binary.length; i+=elementSize){
-            out.add(elementType.decode(binary.slice(i, i+ elementSize)));
+            out.add(elementType.decode(binary.slice(i, i+ elementSize), precision));
         }
         return out;
     }

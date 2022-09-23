@@ -50,7 +50,7 @@ export class ConnectionHandler{
         this.AwaitReply(new SocketPackage('get_id')).then(
            ((pkg : SocketPackage) => {
                 this.private_ownID = pkg.data.id;
-                console.info("Peer connected as: " + this.private_ownID);
+                console. info("Peer connected as: " + this.private_ownID);
                 this.onIDReceived(pkg.data.id);
             }),
             (() => {

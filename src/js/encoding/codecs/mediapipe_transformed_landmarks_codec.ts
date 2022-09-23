@@ -1,9 +1,9 @@
-import { Codec } from "./codec";
 import { RenderObject } from "../../renderer/renderer";
 import { FaceMesh, InputImage, NormalizedLandmarkList } from "@mediapipe/face_mesh";
 import { EncodableArray, EncodableCoordinates } from "../types";
+import { Codec } from "./codec";
 
-export class FaceMaskCodec implements Codec{
+export class MediapipeTransformedLandmarksCodec implements Codec{
     private readonly faceMesh : FaceMesh;
     private readonly LIBRARY_FACE_MESH =  'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/';
     private currentLandMarks : NormalizedLandmarkList[];
@@ -43,22 +43,58 @@ export class FaceMaskCodec implements Codec{
         const data = new EncodableArray();
 
         if(this.currentLandMarks != null){
-            let landmarks = this.currentLandMarks[0];
+            let landmarks = this.transformLandmarks(this.currentLandMarks[0]);
             landmarks.forEach((landmark : any)=>{
               data.add(new EncodableCoordinates(landmark.x, landmark.y, landmark.z))
             });
 
         }
-        return data.encode(EncodableCoordinates, 4, true);
+        return data.encode(EncodableCoordinates, 8);
 
     }
 
     decodeFrame(data : Int8Array) : RenderObject {
-      const out = EncodableArray.decode(data, EncodableCoordinates, 4);
-      return new RenderObject(out);
+      const out = EncodableArray.decode(data, EncodableCoordinates, 8);
+      return new RenderObject(out.getValue());
     }
     
   
+    transformLandmarks = (landmarks : NormalizedLandmarkList) => {
+      if (!landmarks) {
+        return landmarks;
+      }
+    
+      let hasVisiblity = !!landmarks.find(l => l.visibility);
+    
+      let minZ = 1e-4;
+    
+      // currently mediapipe facemesh js
+      // has visibility set to undefined
+      // so we use a heuristic to set z position of facemesh
+      if (hasVisiblity) {
+        landmarks.forEach(landmark => {
+          let { z, visibility } = landmark;
+          z = -z;
+          if (z < minZ && visibility) {
+            minZ = z
+          }
+        });
+      } else {
+        minZ = Math.max(-landmarks[234].z, -landmarks[454].z);
+      }
+     
+      return landmarks.map(landmark => {
+        let {x, y, z} = landmark;
+        return {
+          x: -0.5 + x,
+          y: 0.5 - y,
+          z: -z - minZ,
+          visibility: landmark.visibility,
+        }
+      });
     }
+  }
+
 
    
+    

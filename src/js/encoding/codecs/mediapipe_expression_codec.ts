@@ -1,15 +1,20 @@
 import { RenderObject } from "../../renderer/renderer";
 import { FaceMesh, InputImage, NormalizedLandmarkList, MatrixData } from "@mediapipe/face_mesh";
-import { EncodableArray, EncodableNumber } from "../types";
+import { EncodableArray, EncodableCoordinates, EncodableNumber } from "../types";
 import { Codec } from "./codec";
 
-export class MediapipeTranslationCodec implements Codec{
+export class MediapipeExpressionCodec implements Codec{
     private readonly faceMesh : FaceMesh;
     private readonly LIBRARY_FACE_MESH =  'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/';
     private currentMatrix : MatrixData;
-    init = false;
+    private currentLandMarks : NormalizedLandmarkList[];
+    private currentVcoords : EncodableArray;
 
-    private PRECISION = 4;
+    init = false;
+    private PRECISION = 8;
+
+    private translationMatrixBinaryLength = EncodableArray.getEncodedSize(16, EncodableNumber, this.PRECISION, false);
+    private landmarksBinaryLength = EncodableArray.getEncodedSize(468, EncodableCoordinates, this.PRECISION, false);
 
     constructor(){
         this.faceMesh = new FaceMesh({locateFile: (file) => {
@@ -29,10 +34,21 @@ export class MediapipeTranslationCodec implements Codec{
           minDetectionConfidence: 0.5,
           minTrackingConfidence: 0.5
         });
+
+        this.currentVcoords = new EncodableArray();
   
         this.faceMesh.onResults((results) => {
           if (results.multiFaceLandmarks && results.multiFaceLandmarks [0] != null){
-            this.currentMatrix = results.multiFaceGeometry[0].getPoseTransformMatrix();;
+            this.currentMatrix = results.multiFaceGeometry[0].getPoseTransformMatrix();
+            const a = results.multiFaceGeometry[0].getMesh().getVertexBufferList();
+            this.currentVcoords.empty();
+            //console.log({x : a[10*5+0], y : a[10*5+1]});
+            for(let i = 0; i<468; i++){
+              this.currentVcoords.add(new EncodableCoordinates(a[i*5],a[i*5+1],a[i*5+2]))
+            }
+
+
+            this.currentLandMarks = results.multiFaceLandmarks;
         }
         });
   
@@ -42,21 +58,36 @@ export class MediapipeTranslationCodec implements Codec{
 
     encodeFrame(videoDom : HTMLVideoElement) : Int8Array {
         if(!this.init) return;
-        
         this.faceMesh.send({image: videoDom as InputImage});
-        const data = new EncodableArray();
+
+        const geomData = new EncodableArray();
+        const landmarkData = new EncodableArray();
+
+
         const ELEMENTS = 16;
 
-        if(this.currentMatrix != null){
-          for(let i=0; i<ELEMENTS;i++)
-            data.add(new EncodableNumber(this.currentMatrix.getPackedDataList()[i]));
+
+        if(this.currentMatrix != null && this.currentLandMarks != null){
+          for(let i=0; i<ELEMENTS;i++){
+            geomData.add(new EncodableNumber(this.currentMatrix.getPackedDataList()[i]));
+          }
+          let landmarks = this.transformLandmarks(this.currentLandMarks[0]);
+          landmarks.forEach((landmark : any)=>{
+            landmarkData.add(new EncodableCoordinates(landmark.x, landmark.y, landmark.z))
+          });
         }
-        return data.encode(EncodableNumber, this.PRECISION);
+        const out = new Int8Array(this.landmarksBinaryLength + this.translationMatrixBinaryLength);
+        out.set(geomData.encode(EncodableNumber, this.PRECISION), 0);
+        out.set(this.currentVcoords.encode(EncodableCoordinates, this.PRECISION), this.translationMatrixBinaryLength)
+
+        return out;
     }
 
     decodeFrame(data : Int8Array) : RenderObject {
-      const out = EncodableArray.decode(data, EncodableNumber, this.PRECISION);
-      return new RenderObject(out);
+      const geomData = EncodableArray.decode(data.slice(0, this.translationMatrixBinaryLength), EncodableNumber, this.PRECISION);
+      const landmarkData = EncodableArray.decode(data.slice(this.translationMatrixBinaryLength, data.length), EncodableCoordinates, this.PRECISION);
+
+      return new RenderObject({translation : geomData.getValue(), landmarks : landmarkData.getValue()});
     }
     
     transformLandmarks = (landmarks : NormalizedLandmarkList) => {

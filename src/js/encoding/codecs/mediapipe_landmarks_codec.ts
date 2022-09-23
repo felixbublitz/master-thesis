@@ -49,16 +49,14 @@ export class MediapipeLandmarksCodec implements Codec{
             });
 
         }
-        return data.encode(EncodableCoordinates, 4, true);
+        return data.encode(EncodableCoordinates, 8);
 
     }
 
     decodeFrame(data : Int8Array) : RenderObject {
-      const out = EncodableArray.decode(data, EncodableCoordinates, 4);
-      return new RenderObject(out);
+      const out = EncodableArray.decode(data, EncodableCoordinates,8);
+      return new RenderObject(out.getValue());
     }
     
   
-    }
-
-   
+  }
