@@ -1,10 +1,10 @@
-import { PerformanceMeter } from "../measuring/performance";
+import { SequenceLogger, TimeMeasuringItem } from "../measuring/performance";
 import { RenderModel } from "./models/render_model";
 
 export class Renderer{
 
     protected readonly domElement : HTMLElement;
-    protected performanceMeter : PerformanceMeter;
+    protected sequenceLogger : SequenceLogger;
     private renderModel : RenderModel;
 
     onData(renderObject: RenderObject) : void{}
@@ -12,7 +12,7 @@ export class Renderer{
 
     constructor(domElement: HTMLElement){
         this.domElement = domElement;
-        this.performanceMeter = new PerformanceMeter();
+        this.sequenceLogger = new SequenceLogger();
     }
 
 
@@ -21,11 +21,11 @@ export class Renderer{
         this.clear();
         this.renderModel = model;
         this.domElement.appendChild(model.domRenderer);
-        this.performanceMeter.reset();
+        this.sequenceLogger.reset();
     }
 
-    public async getPerformanceSample() : Promise<PerformanceMeter.Sample>{       
-        return this.performanceMeter.sample();
+    public async getPerformanceSample() : Promise<SequenceLogger.Sample>{       
+        return this.sequenceLogger.sample();
     }
 
     clear(){
@@ -38,11 +38,16 @@ export class Renderer{
         if(this.renderModel == null)
         return;
 
-        const customPerformanceMeasurement = this.renderModel.customPerformanceMeasurement(this.performanceMeter, renderObject);
+        const customPerformanceMeasurement = this.renderModel.customPerformanceMeasurement(this.sequenceLogger, renderObject);
 
-        if(!customPerformanceMeasurement) this.performanceMeter.measure('render');
+        if(!customPerformanceMeasurement) {
+            if(this.sequenceLogger.get('render') == null) this.sequenceLogger.add('render', new TimeMeasuringItem());
+            (this.sequenceLogger.get('render') as TimeMeasuringItem).measure();
+        }
+
+        if(!customPerformanceMeasurement) (this.sequenceLogger.get('render') as TimeMeasuringItem).measure();
         this.renderModel.renderFrame(renderObject);
-        if(!customPerformanceMeasurement) this.performanceMeter.stopMeasuring('render');
+        if(!customPerformanceMeasurement) (this.sequenceLogger.get('render') as TimeMeasuringItem).stopMeasuring();
     }
 }
 

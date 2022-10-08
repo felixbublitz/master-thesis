@@ -3,15 +3,12 @@ import { VideoConference } from "./video_conference";
 import { Sheet } from "./measuring/sheet";
 import { VideoRenderModel } from "./renderer/models/video_render_model";
 import { TransmissionModel } from "./transmission_model";
-import { Replica3DRenderModel } from "./renderer/models/replica3d_render_model";
 import { MediapipeLandmarksCodec } from "./encoding/codecs/mediapipe_landmarks_codec";
 import { WireframeRenderModel } from "./renderer/models/wireframe_render_model";
-import { MediapipeTransformedLandmarksCodec } from "./encoding/codecs/mediapipe_transformed_landmarks_codec";
 import { MediapipeExpressionCodec } from "./encoding/codecs/mediapipe_expression_codec";
 import { ExpressionTransferRenderModel } from "./renderer/models/expression_transfer_render_model";
-import { ExpressionTest } from "./renderer/models/expression_test";
-import { TextureExtractor } from "./mediapipe/texture_extractor";
-
+import { AffineReenactment } from "./renderer/models/affine_reenactment_render_model";
+import { Parameter } from "./measuring/performance";
 
 
 const wsAddr = "ws://127.0.0.1:2222";
@@ -25,8 +22,6 @@ class App{
     
     constructor(wsAddress : string){
 
-        const a = new TextureExtractor();
-        a.extact();
 
         this.performanceSheet = new Sheet();
         this.videoConference = new VideoConference(wsAddress);
@@ -34,8 +29,9 @@ class App{
         //init available transmission models
         this.videoConference.addTransmissionModel({name : "Video", codec: null, renderModel: new VideoRenderModel()} as TransmissionModel)
         this.videoConference.addTransmissionModel({name : "Wireframe", codec: new MediapipeLandmarksCodec(), renderModel: new WireframeRenderModel()} as TransmissionModel)
-        this.videoConference.addTransmissionModel({name : "Replica 3D", codec: new MediapipeTransformedLandmarksCodec(), renderModel: new Replica3DRenderModel()} as TransmissionModel)
-        this.videoConference.addTransmissionModel({name : "ExpressionTransfer", codec: new MediapipeExpressionCodec(), renderModel: new ExpressionTransferRenderModel()} as TransmissionModel)
+        this.videoConference.addTransmissionModel({name : "Reenactment (Affine)", codec: new MediapipeLandmarksCodec(), renderModel: new AffineReenactment()} as TransmissionModel)
+        this.videoConference.addTransmissionModel({name : "Face Swap", codec: new MediapipeExpressionCodec(), renderModel: new ExpressionTransferRenderModel()} as TransmissionModel)
+        this.videoConference.addTransmissionModel({name : "Reenactment (Affine)", codec: new MediapipeLandmarksCodec(), renderModel: new AffineReenactment()} as TransmissionModel)
 
         
         this.videoConference.onConnected = (async (dom : HTMLElement) => {
@@ -74,28 +70,47 @@ class App{
 
     private async updateStats(){
         let row = new Sheet.Row();
-        let sample = await this.videoConference.encoder.getPerformanceSample();
-        console.log(sample);
+        let sample;
 
-        if(sample.has('encoding')) row.add('Encoding', sample.get('encoding'));
-        
-        row.add("codec", this.videoConference.receivingModel.name);
+        this.videoConference.peers.map((peer, peerID) => {
+            document.getElementById(DomElement.peerStats(peerID)).innerText ="";
+
+        });
 
         if(this.videoConference.connectionHandler != null){
-            this.videoConference.peers.forEach(async (peer, peerID)=>{
+
+
+            await Promise.all(this.videoConference.peers.map(async (peer, peerID) => {
+
+
+                sample = await this.videoConference.encoder.getPerformanceSample();
+                for(const param of sample.items){
+                    row.add(param);
+                }
+
                 sample = await this.videoConference.connectionHandler.getPerformanceSample(peerID);
-                if(sample.has('transmissionTime')) row.add('transmission [Peer ' + peerID + ']', sample.get('transmissionTime'));
-            })
+                for(const param of sample.items){
+                    document.getElementById(DomElement.peerStats(peerID)).innerHTML += param.title + ': ' + param.value + ' ' + (param.unit==null?"":param.unit) + '<br>';
+                    row.add(param);
+                }
+            }));
+
         }
         
         await Promise.all(this.videoConference.renderer.map(async (renderer, peerID) => {
+                if(peerID == this.videoConference.peerId) return;
                 sample = await renderer.getPerformanceSample();
-                if(sample.has('render')) row.add('render [Peer ' + peerID + ']', sample.get('render'));
+                if(sample.has('render')){
+                    const s = sample.get('render');
+                    s.title = 'render [Peer ' + peerID + ']';
+                    row.add(s);
+                } 
         }));
-
+        //console.clear();
+        row.print();
         this.performanceSheet.add(row);
-        console.log(row.items);
     }
+    
 
     private addPeer(peerId : number, renderDom : HTMLElement, self? : boolean){
         let item = document.createElement("li");
@@ -105,7 +120,24 @@ class App{
         stats.id = DomElement.peerStats(peerId);
         title.innerHTML = `${this.textPeer} ${peerId} ${self==true? this.textMe : ""}`;
         item.id = DomElement.peerItem(peerId);
+        item.style.position = "relative";
+
         renderDom.id = DomElement.peerContent(peerId);
+        renderDom.style.minWidth = "320px";
+        renderDom.style.minHeight = "180px";
+        renderDom.style.background = "#0053cf";
+
+        stats.style.display = "block";
+        stats.style.position = "absolute";
+        stats.style.top = "4px";
+        stats.style.left = "4px";
+        stats.style.background = "none";
+        stats.style.width = "320px";
+        stats.style.height = "240px";
+        stats.style.fontSize = "10px";
+        stats.style.textAlign = "left";
+        stats.style.opacity = "0.7";
+
 
         item.appendChild(renderDom);
         item.appendChild(title);

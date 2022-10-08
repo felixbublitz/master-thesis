@@ -1,18 +1,18 @@
 import { Codec } from './codecs/codec';
-import { PerformanceMeter } from '../measuring/performance';
+import { SequenceLogger, TimeMeasuringItem } from '../measuring/performance';
 
 export class Encoder{
     private readonly tasks : Map<number, Codec>
     private readonly fps = 30;
     private videoDom : HTMLVideoElement;
     private readonly stream : VideoStream ;
-    private readonly performanceMeter : PerformanceMeter;
+    private readonly sequenceLogger : SequenceLogger;
     onFrameAvailable(peerId : number, data : Int8Array){};  
 
     constructor(){
         this.tasks = new Map();
         this.stream = new VideoStream();
-        this.performanceMeter = new PerformanceMeter();
+        this.sequenceLogger = new SequenceLogger();
     }
 
     async getStream(){
@@ -32,7 +32,8 @@ export class Encoder{
     }
 
     start(peerId : number, codec : Codec){
-      if(codec != null) codec.startEncoding();
+      if(codec == null)return;
+      codec.startEncoding();
       this.tasks.set(peerId, codec);
     }
 
@@ -42,16 +43,23 @@ export class Encoder{
 
     update(){
       this.tasks.forEach((codec, peerID)=>{
-        this.performanceMeter.measure('encoding');
+        let measureItem = this.sequenceLogger.get('encoding-' + peerID) as TimeMeasuringItem;
+
+        if(measureItem == null){
+          measureItem = new TimeMeasuringItem();
+          this.sequenceLogger.add("encoding-"+peerID, measureItem);
+        }
+
+        measureItem.measure();
         let encoded = codec.encodeFrame(this.videoDom);
-        this.performanceMeter.stopMeasuring('encoding');
+        measureItem.stopMeasuring();
 
         if(encoded != null) this.onFrameAvailable(peerID, encoded);
       });
     }
 
-    public async getPerformanceSample() : Promise<PerformanceMeter.Sample>{
-      return this.performanceMeter.sample();
+    public async getPerformanceSample() : Promise<SequenceLogger.Sample>{
+      return this.sequenceLogger.sample();
     }
 
  

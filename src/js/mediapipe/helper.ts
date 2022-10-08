@@ -24,6 +24,12 @@ export class Helper{
         const right = landmarks[454];
         return Math.sqrt((right.x - left.x)**2 + (right.y-left.y)**2 + (right.z-left.z)**2);
       }
+
+
+      static getDistance(landmark1 : any, landmark2 : any){
+        return Math.sqrt((landmark1.x - landmark2.x)**2 + (landmark1.y-landmark2.y)**2 + (landmark1.z-landmark2.z)**2);
+      }
+    
     
       static getRotation = (landmarks : Array<any>) => {
         const nose = landmarks[6];// nose bottom

@@ -1,4 +1,4 @@
-import { PerformanceMeter } from "../measuring/performance";
+import { PerSecondItem, SequenceLogger, StringItem, TimeMeasuringItem, ValueMeasuringItem } from "../measuring/performance";
 import { AddressLabel, SocketPackage } from "./connection_types";
 import { RTCChannel } from "./rtc_channel";
 
@@ -9,6 +9,9 @@ enum RtcEncoding{
 }
 
 const BIT_TO_BYTE = 0.125;
+const BYTE_TO_BIT = 8;
+const S_TO_MS = 1000;
+
 const RTC_DATA_ENCODING : RtcEncoding = RtcEncoding.String;
 
 export class ConnectionHandler{
@@ -17,7 +20,7 @@ export class ConnectionHandler{
     private readonly dataChannelID = 0;
     private readonly iceServers = [{urls: "stun:stun.stunprotocol.org"}];
     private readonly peers : Array<RTCPeerConnection> = [];
-    private performanceMeters : Array<PerformanceMeter> = [];
+    private sequenceLogger : Array<SequenceLogger> = [];
 
     onIDReceived(ownID : number){};
     onStreamsReceived(peerId : number, streams : readonly MediaStream[], peer : RTCPeerConnection, statsKey : string){};
@@ -120,10 +123,11 @@ export class ConnectionHandler{
         })
     }
 
-    async getPerformanceSample(peerId : number) : Promise<PerformanceMeter.Sample>{
-        if(this.performanceMeters[peerId] == null)
+
+    async getPerformanceSample(peerId : number) : Promise<SequenceLogger.Sample>{
+        if(this.sequenceLogger[peerId] == null)
             throw("peer does not exist");
-        return await this.performanceMeters[peerId].sample();
+        return await this.sequenceLogger[peerId].sample();
     }
     
     removeRTCPeer(peerID : number){
@@ -133,8 +137,53 @@ export class ConnectionHandler{
 
     createRTCPeer(peerId : number){
         const peer = new RTCPeerConnection({iceServers : this.iceServers});
+
+        (peer as any).recLog = false;
+        (peer as any).sendLog = false;
+
+
+        (peer as any).changeNetLogging = (param : string)=>{
+            if(param == "start-rec-video"){
+                (peer as any).recLog = true;
+                this.sequenceLogger[peerId].add('roundtrip_time', new TimeMeasuringItem(2, 'ms'));
+                this.sequenceLogger[peerId].add('frame_size', new TimeMeasuringItem(0, 'b'));
+                this.sequenceLogger[peerId].add('bitrate', new PerSecondItem(0, 'b/s'));
+                this.sequenceLogger[peerId].add('framerate', new PerSecondItem(0, 'fps'));
+                this.sequenceLogger[peerId].add('decode_time', new TimeMeasuringItem(2, 'ms'));
+                this.sequenceLogger[peerId].add('codec', new StringItem());
+            }
+
+            if(param == "stop-rec-video"){
+                this.sequenceLogger[peerId].remove('frame_size');
+                this.sequenceLogger[peerId].remove('bitrate');
+                this.sequenceLogger[peerId].remove('framerate');
+                this.sequenceLogger[peerId].remove('decode_time');
+                this.sequenceLogger[peerId].remove('codec');
+                (peer as any).recLog = false;;
+            }
+
+            if(param == "start-send-video"){
+                this.sequenceLogger[peerId].add('roundtrip_time', new TimeMeasuringItem(2, 'ms'));
+                this.sequenceLogger[peerId].add('encode_time', new TimeMeasuringItem(2, 'ms'));
+                (peer as any).sendLog = true;
+            }
+
+            if(param == "stop-send-video"){
+                this.sequenceLogger[peerId].remove('encode_time');
+                (peer as any).sendLog = false;
+            }
+
+            if(!(peer as any).recLog && ! (peer as any).sendLog){
+                this.sequenceLogger[peerId].remove('roundtrip_time');
+            }
+
+        }
+
         peer.onicecandidate = (ev) => this.onICECandidate(peerId, ev);
         
+       
+
+
         peer.ontrack = async (ev) => {
             let stats = await peer.getStats();
             let statsKey : string;
@@ -142,7 +191,14 @@ export class ConnectionHandler{
                 if(statsKey == null && element.type == 'inbound-rtp'){
                     statsKey = element.id;
                 }
-            });;
+            });
+            (this.peers[peerId] as any).changeNetLogging('start-rec-video');
+
+
+            ev.streams[0].onremovetrack = ()=>{
+                (this.peers[peerId] as any).changeNetLogging('stop-rec-video');
+            }
+       
             this.onStreamsReceived(peerId, ev.streams, peer, statsKey)
         };
         peer.onnegotiationneeded = () => this.onNegotiationNeeded(peerId);
@@ -160,30 +216,55 @@ export class ConnectionHandler{
         console.log("RTC Connection to: " + peerId + " established");
         this.onPeerConnected(peerId);
 
-        this.performanceMeters[peerId] = new PerformanceMeter();
+        
+        this.sequenceLogger[peerId] = new SequenceLogger();
 
-        this.performanceMeters[peerId].beforeSample = async()=>{
-            let bitrate = 0;
-            let rtt = 0;
+
+        this.sequenceLogger[peerId].beforeSample = async()=>{
             await (async ()=>{
-                (await peer.getStats()).forEach(element => {
-                    if(bitrate == 0 && element.type == "candidate-pair" && element.nominated == true){
-                        bitrate = element.availableOutgoingBitrate;//element.availableIncomingBitrate; wieso nicht vorhanden???
-                        rtt = element.currentRoundTripTime;
+                if(!(peer as any).recLog && !(peer as any).sendLog)
+                return;
+                const stats = await peer.getStats();
+                let senderTrack = "";
+                let receiverTrack = "";
+
+
+                for(const [key, element] of stats){
+                    if(element.type == 'stream'){
+                        if(element.trackIds.length >0){
+                            const track : string = element.trackIds[element.trackIds.length-1];
+                            if(track.includes("sender"))senderTrack = element.trackIds[element.trackIds.length-1];
+                            if(track.includes("receiver"))receiverTrack = element.trackIds[element.trackIds.length-1];
+                        }
                     }
-                    if(element.type == 'inbound-rtp'){
-                        this.performanceMeters[peerId].addContinious('bytesPerFrame', element.bytesReceived, element.framesDecoded);
-                    }
-                });
-                if(bitrate != null && rtt != null && this.performanceMeters[peerId].get('bytesPerFrame') != null){
-                    this.performanceMeters[peerId].add('transmissionTime', this.performanceMeters[peerId].get('bytesPerFrame').getAverage()/(bitrate*BIT_TO_BYTE), 1);
-                    this.performanceMeters[peerId].add('roundTripTime', rtt, 1);
                 }
+
+
+                for(const [key, element] of stats){
+                    if(element.type == "candidate-pair" && element.nominated == true){
+                        (this.sequenceLogger[peerId].get('roundtrip_time') as TimeMeasuringItem).add(element.currentRoundTripTime * S_TO_MS, 1);
+                    }
+                    if(element.type == 'outbound-rtp' && element.trackId == senderTrack){
+                        (this.sequenceLogger[peerId].get('encode_time') as TimeMeasuringItem).addContinuous(element.totalEncodeTime * S_TO_MS, element.framesEncoded);;
+                    }
+
+    
+                    if(element.type == 'inbound-rtp' && element.trackId == receiverTrack){
+                        (this.sequenceLogger[peerId].get('codec') as StringItem).set(stats.get(element.codecId).mimeType);
+                        (this.sequenceLogger[peerId].get('frame_size') as TimeMeasuringItem).addContinuous(element.bytesReceived+element.headerBytesReceived, element.framesReceived);
+                        (this.sequenceLogger[peerId].get('decode_time') as TimeMeasuringItem).addContinuous(element.totalDecodeTime * S_TO_MS, element.framesDecoded);
+                        (this.sequenceLogger[peerId].get('bitrate') as PerSecondItem).addContinuous((element.bytesReceived+element.headerBytesReceived) * BYTE_TO_BIT);
+                        (this.sequenceLogger[peerId].get('framerate') as PerSecondItem).addContinuous(element.framesDecoded);
+                    }
+                };
+
             })();
             
            
         }
-        this.performanceMeters[peerId].sample();
+        this.sequenceLogger[peerId].sample();
+
+
 
         return peer;
     }
@@ -200,6 +281,13 @@ export class ConnectionHandler{
         
         this.AwaitReply(new SocketPackage('offer', {peerId: this.ownID, offer: peerOffer}, new AddressLabel(this.ownID, peerId))).then(async (pkg : SocketPackage) => {
             await this.peers[peerId].setRemoteDescription(new RTCSessionDescription(pkg.data.answer));
+
+            const senders = this.peers[peerId].getSenders()[0];
+            if(senders != null){
+        const params = senders.getParameters();
+        params.encodings[0].maxBitrate = 100000000
+        senders.setParameters(params); //1mbps*/
+        }
         });
     }
 
@@ -230,12 +318,15 @@ export class ConnectionHandler{
     }
 
     addStream(peerId : number, stream : MediaStream){
+        (this.peers[peerId] as any).changeNetLogging('start-send-video');
         for(const track of stream.getTracks()){
+            track.applyConstraints({frameRate : {max: 200}});
             (this.peers[peerId] as any).sender = this.peers[peerId].addTrack(track, stream);
         }
     }
 
     removeStream(peerId : number){
+        (this.peers[peerId] as any).changeNetLogging('stop-send-video');
         if((this.peers[peerId] as any).sender == null) throw(new Error("no track to stop"));
         this.peers[peerId].removeTrack((<any>this.peers[peerId]).sender);
     }

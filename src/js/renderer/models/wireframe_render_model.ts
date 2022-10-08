@@ -1,7 +1,7 @@
 import { drawConnectors } from "@mediapipe/drawing_utils";
 import { FACEMESH_FACE_OVAL, FACEMESH_LEFT_EYE, FACEMESH_LEFT_EYEBROW, FACEMESH_LEFT_IRIS, FACEMESH_LIPS, FACEMESH_RIGHT_EYE, FACEMESH_RIGHT_EYEBROW, FACEMESH_RIGHT_IRIS, FACEMESH_TESSELATION } from "@mediapipe/face_mesh";
 import { EncodableArray } from "../../encoding/types";
-import { PerformanceMeter } from "../../measuring/performance";
+import { SequenceLogger } from "../../measuring/performance";
 import { RenderObject } from "../renderer";
 import { RenderModel } from "./render_model";
 
@@ -16,7 +16,7 @@ export class WireframeRenderModel implements RenderModel{
         this.domRenderer.height = this.height;
     }
 
-    customPerformanceMeasurement(meter: PerformanceMeter, renderObject: RenderObject): boolean {
+    customPerformanceMeasurement(meter: SequenceLogger, renderObject: RenderObject): boolean {
         return false;
     }
 

@@ -1,3 +1,5 @@
+import { Parameter } from "./performance";
+
 const CSV_NEW_COLUMN = ',';
 const CSV_NEW_ROW = '\n';
 
@@ -14,7 +16,8 @@ export class Sheet{
     }
 
     addFeatures(dataset : Sheet.Row){
-        for(const title of dataset.items.keys()){
+        for(const param of dataset.items){
+            const title = param.getTitle(true);
             if(!this.fields.includes(title))
             this.fields.push(title);
         }
@@ -45,8 +48,8 @@ export class Sheet{
         //content
         this.rows.forEach(row => {
             out += (row.timestamp - this.creationTime) + CSV_NEW_COLUMN;
-            row.items.forEach((value, title)=>{
-                out += value + CSV_NEW_COLUMN
+            row.items.forEach((param, title)=>{
+                out += param.value + CSV_NEW_COLUMN
             });
             out = out.slice(0, -1);
             out += CSV_NEW_ROW;
@@ -72,23 +75,31 @@ export namespace Sheet{
     
     export class Row{
         readonly timestamp : number;
-        readonly items : Map<string, any>
+        readonly items : Array<Parameter>
         constructor(){
             this.timestamp = Date.now();
-            this.items = new Map();
+            this.items = new Array();
         }
 
         isEmpty(){
-            return this.items.size == 0;
+            return this.items.length == 0;
         }
 
-        add(title : string, value : any){
-            this.items.set(title, value);
+        add(param : Parameter){
+            this.items.push(param);
             this.onChanged(this);
         }
         
         onChanged(row : Row){
 
+        }
+
+        print(){
+            let out = "";
+            for(const param of this.items){
+                out += param.title + ': ' + param.value + ' ' + (param.unit != null?param.unit:'') + '\n';
+            }
+            console.log(out);
         }
     }
 }

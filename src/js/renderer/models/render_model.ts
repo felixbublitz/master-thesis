@@ -1,4 +1,4 @@
-import { PerformanceMeter } from "../../measuring/performance";
+import { SequenceLogger } from "../../measuring/performance";
 import { RenderObject } from "../renderer";
 
 export interface RenderModel{
@@ -6,6 +6,6 @@ export interface RenderModel{
     
     init(data : any) : void;
     renderFrame(renderObject: RenderObject): void;
-    customPerformanceMeasurement(meter: PerformanceMeter, renderObject : RenderObject) : boolean;
+    customPerformanceMeasurement(meter: SequenceLogger, renderObject : RenderObject) : boolean;
     destruct() : void;
 }

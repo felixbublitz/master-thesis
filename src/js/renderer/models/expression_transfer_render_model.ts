@@ -1,4 +1,4 @@
-import { PerformanceMeter } from "../../measuring/performance";
+import { SequenceLogger } from "../../measuring/performance";
 import { RenderObject } from "../renderer";
 import { RenderModel } from "./render_model";
 import * as THREE from 'three';
@@ -103,7 +103,7 @@ export class ExpressionTransferRenderModel implements RenderModel{
     }
 
 
-    customPerformanceMeasurement(meter: PerformanceMeter, renderObject: RenderObject): boolean {
+    customPerformanceMeasurement(meter: SequenceLogger, renderObject: RenderObject): boolean {
         return false;
     }
 
@@ -136,7 +136,7 @@ export class ExpressionTransferRenderModel implements RenderModel{
         this.eye.rotation.y = -Math.PI/2;
        
 */
-this.eye.position.set(landmarks[159].x,(landmarks[159].y - Math.abs(landmarks[159].y-landmarks[145].y))+0.5, 0)
+this.eye.position.set(landmarks[159].x,(landmarks[159].y - Math.abs(landmarks[159].y-landmarks[145].y))+0.5, -2)
         this.renderer.render(this.scene, this.camera);
 
     }
@@ -190,7 +190,6 @@ this.eye.position.set(landmarks[159].x,(landmarks[159].y - Math.abs(landmarks[15
       
       this.faces = new THREE.Mesh(geometry, this.material);
       const size = new THREE.Box3().setFromObject(this.faces).getSize(new THREE.Vector3());  
-      console.log(size.x);
 
 
       let uv :any = [];
@@ -217,7 +216,7 @@ this.eye.position.set(landmarks[159].x,(landmarks[159].y - Math.abs(landmarks[15
 
 
      
-      this.scene.add(this.eye);
+    // this.scene.add(this.eye);
       this.scene.add(this.faces);
     }
 
@@ -252,6 +251,25 @@ this.eye.position.set(landmarks[159].x,(landmarks[159].y - Math.abs(landmarks[15
         let geometry = new BufferGeometry();
         let vertices = [];
         let uvs = [];
+
+
+        let closeFactor = Helper.getDistance(landmarks[159],landmarks[145])/Helper.getScale(landmarks);
+        closeFactor = 1-Math.max(0,Math.min(1,(closeFactor-0.037)/0.022));
+        //console.log(closeFactor);
+
+
+        const landmarkPairs = [[246,7],[161,163],[160,144],[159,145],[158,153],[157,154],[173,155]];
+
+        for(let i=0;i<landmarkPairs.length;i++){
+          const lA = landmarkPairs[i][0];
+          const lB = landmarkPairs[i][1];
+
+          
+
+          const closeDist = Helper.getDistance(landmarks[lA],landmarks[lB]);
+          landmarks[lA].y = landmarks[lA].y - closeFactor * closeDist;
+          
+        }
 
         for(let i = 0; i < landmarks.length; i++) {
           const coordinates = landmarks[i];

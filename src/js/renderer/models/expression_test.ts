@@ -1,4 +1,4 @@
-import { PerformanceMeter } from "../../measuring/performance";
+import { SequenceLogger } from "../../measuring/performance";
 import { RenderObject } from "../renderer";
 import { RenderModel } from "./render_model";
 import * as THREE from 'three';
@@ -90,7 +90,7 @@ export class ExpressionTest implements RenderModel{
 
   }
 
-  customPerformanceMeasurement(meter: PerformanceMeter, renderObject: RenderObject): boolean {
+  customPerformanceMeasurement(meter: SequenceLogger, renderObject: RenderObject): boolean {
       return false;
   }
 

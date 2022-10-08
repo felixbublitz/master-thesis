@@ -1,4 +1,4 @@
-import { PerformanceMeter } from "../../measuring/performance";
+import { SequenceLogger, TimeMeasuringItem } from "../../measuring/performance";
 import { RenderObject } from "../renderer";
 import { RenderModel } from "./render_model";
 
@@ -15,22 +15,11 @@ export class VideoRenderModel implements RenderModel{
         this.domRenderer.height = this.height;
         this.domRenderer.autoplay = true;
         this.domRenderer.playsInline = true;
+
+        
     }
 
-    customPerformanceMeasurement(meter: PerformanceMeter, renderObject : RenderObject): boolean {
-        if(!renderObject.rtcStats) return;
-
-        meter.beforeSample = async()=>{
-            
-            await renderObject.data.peer.getStats().then((stats : any)=>{
-                let decodeStat = stats.get(renderObject.data.statsKey);
-                console.log(decodeStat);
-                meter.addContinious('decoding', decodeStat.totalDecodeTime * S_TO_MS, decodeStat.framesDecoded);
-                console.log("before done");
-            });
-
-        }
-        meter.sample();
+    customPerformanceMeasurement(meter: SequenceLogger, renderObject : RenderObject): boolean {
         return true;
     }
 
