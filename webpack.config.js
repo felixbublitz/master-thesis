@@ -2,6 +2,8 @@ const path = require('path');
 var fs = require('fs');
 let url = require('url');
 let webpack = require('webpack');
+const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
+
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 
@@ -12,14 +14,14 @@ const serverConfig = {
     target: 'node',
     entry :
     {
-        'server' : './src/js/server.ts'
+        'server' : './src/server.ts'
     },
     module : {
         rules : [
             {
                 test: /\.tsx?$/,
                 use: 'ts-loader',
-                include: path.resolve(__dirname, 'src/js')
+                include: path.resolve(__dirname, 'src')
             },
         ]
     },
@@ -37,14 +39,16 @@ const webConfig = {
     target : 'web',
     entry :
     {
-        'app' : './src/js/app.ts',
+        'app' : './src/app.ts',
+        'extractor' : './src/blendshape_extractor.ts',
+
     },
     module : {
         rules : [
             {
                 test: /\.tsx?$/,
                 use: 'ts-loader',
-                include: path.resolve(__dirname, 'src/js')
+                include: path.resolve(__dirname, 'src')
             },
         ]
     },
@@ -66,8 +70,17 @@ const webConfig = {
         new HtmlWebpackPlugin({
             title: "App",
             filename : "app/index.html",
-            template : "src/assets/template.html",
+            template : "src/assets/html/template.html",
             chunks : ["app"],
+            templateParameters: {
+                dll: '../../library/web_library.dll.js',
+              }
+        }),
+        new HtmlWebpackPlugin({
+            title: "Extractor",
+            filename : "extractor/index.html",
+            template : "src/assets/html/template_extractor.html",
+            chunks : ["extractor"],
             templateParameters: {
                 dll: '../../library/web_library.dll.js',
               }
@@ -77,6 +90,8 @@ const webConfig = {
     resolve: {
         extensions: ['.ts', '.js'],
         alias : {
+            "os": require.resolve("os-browserify/browser"),
+
             stream: require.resolve('stream-browserify'),
             zlib: require.resolve('browserify-zlib'),  
         }

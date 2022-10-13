@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>
+    <%= htmlWebpackPlugin.options.title %>
+  </title>
+  <script type="text/javascript" src="js/<%= dll %>"></script>
+  <style>
+    audio,
+canvas,
+progress,
+video {
+  display: block; /* 1 */
+}
+
+    body {
+      text-align: left;
+      margin: 0;
+      text-align: center;
+    }
+
+    #header {
+      background: rgb(46, 46, 46);
+      color: white;
+      padding: 8;
+      margin: 0;
+    }
+
+    button {
+      padding: 4px 8px;
+    }
+
+    #header li {
+      vertical-align: top;
+      padding: 8px 16px;
+      display: inline-block;
+    }
+
+    #header p {
+      margin-bottom: 4px;
+      margin-top: 0;
+    }
+
+    #header select {
+      padding: 4px 8px;
+    }
+
+    #main{
+      margin-top: 4px;
+    }
+
+    #main li{
+      display: inline-block;
+      margin: 0;
+      padding: 0;
+    }
+
+    #main ul{
+      margin:0;
+      padding:0;
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    #main video{
+      background: rgb(113, 113, 221);
+      border:0;
+      padding:0;
+      display: block;
+    }
+
+    #main li{
+
+    }
+    #main p{
+      background: black;
+      color:white;
+      margin: 0;
+      padding: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <ul id="header">
+    <li style="vertical-align: middle;display:inline-block">
+      <p>Video Mode</p>
+      <select id="video-mode">
+      </select>
+    </li>
+
+    <li>
+      <p>action</p>
+      <button id="btn-init-call">init call</button>
+      <button id="btn-export">export stats</button>
+    </li>
+  </ul>
+
+  <div id="main">
+    <ul id="peer-videos">
+    </ul>
+
+  
+  </div>
+
+
+  </div>
+</body>
+
+</html>
