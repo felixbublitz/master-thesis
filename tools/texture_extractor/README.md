@@ -4,6 +4,7 @@
   
 <h2>Usage</h2>
 Replace the input.jpg with an arbitrary image of a person and run the script:
+
 ```bash
 python main.py
 ```
