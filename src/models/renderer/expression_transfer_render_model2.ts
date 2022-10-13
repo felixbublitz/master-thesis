@@ -1,6 +1,6 @@
-import { SequenceLogger } from "../../measuring/performance";
-import { RenderObject } from "../renderer";
-import { RenderModel } from "./render_model";
+import { SequenceLogger } from "../../logging/sequence_logger";
+import { RenderObject } from "../../renderer/renderer";
+import { RenderModel } from "../../renderer/render_model";
 import * as THREE from 'three';
 const {KalmanFilter} = require('kalman-filter');
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -17,8 +17,8 @@ import {
   import { 
     FACE_MESH_INDEX_BUFFER, 
     FACE_MESH_UV  
-  } from '../../mediapipe/face_geom.js';
-import { Helper } from "../../mediapipe/helper";
+  } from '../../etc/face_geom.js';
+import { Helper } from "../../etc/helper";
 import { EncodableArray, EncodableCoordinates } from "../../encoding/types";
 import { degToRad } from "three/src/math/MathUtils";
   

@@ -1,4 +1,4 @@
-import { Parameter } from "./performance";
+import { Parameter } from "./sequence_logger";
 
 const CSV_NEW_COLUMN = ',';
 const CSV_NEW_ROW = '\n';

@@ -1,17 +1,17 @@
 import config from "./config";
-import { DomElement } from "./connectivity/html_types";
+import { DomElement } from "./etc/html_types";
 import { VideoConference } from "./video_conference";
-import { Sheet } from "./measuring/sheet";
-import { VideoRenderModel } from "./renderer/models/video_render_model";
-import { TransmissionModel } from "./transmission_model";
-import { MediapipeLandmarksCodec } from "./encoding/codecs/mediapipe_landmarks_codec";
-import { WireframeRenderModel } from "./renderer/models/wireframe_render_model";
-import { MediapipeExpressionCodec } from "./encoding/codecs/mediapipe_expression_codec";
-import { ExpressionTransferRenderModel } from "./renderer/models/expression_transfer_render_model";
-import { Replica3DRenderModel } from "./renderer/models/replica3d_render_model";
-import { MediapipeTransformedLandmarksCodec } from "./encoding/codecs/mediapipe_transformed_landmarks_codec";
-import { BlendshapeRendermodel } from "./renderer/models/blendshape_render_model";
-import { MediapipeBlendshapeCodec } from "./encoding/codecs/mediapipe_blendshape_codec";
+import { Sheet } from "./logging/sheet";
+import { TransmissionModel } from "./models/transmission_model";
+import { VideoRenderModel } from "./models/renderer/video_render_model";
+import { MediapipeLandmarksCodec } from "./models/codecs/mediapipe_landmarks_codec";
+import { WireframeRenderModel } from "./models/renderer/wireframe_render_model";
+import { MediapipeExpressionCodec } from "./models/codecs/mediapipe_expression_codec";
+import { ExpressionTransferRenderModel } from "./models/renderer/expression_transfer_render_model";
+import { Replica3DRenderModel } from "./models/renderer/replica3d_render_model";
+import { MediapipeTransformedLandmarksCodec } from "./models/codecs/mediapipe_transformed_landmarks_codec";
+import { BlendshapeRendermodel } from "./models/renderer/blendshape_render_model";
+import { MediapipeBlendshapeCodec } from "./models/codecs/mediapipe_blendshape_codec";
 
 class App{
     private readonly performanceSheet: Sheet;

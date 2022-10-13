@@ -1,4 +1,4 @@
-import { RenderObject } from "../../renderer/renderer";
+import { RenderObject } from "../renderer/renderer";
 
 export interface Codec{
     startEncoding() : void;

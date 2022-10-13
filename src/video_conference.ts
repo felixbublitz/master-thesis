@@ -3,8 +3,8 @@ import { Renderer, RenderObject } from "./renderer/renderer";
 import { ConnectionHandler } from "./connectivity/connection_handler";
 import { AddressLabel, SocketPackage } from "./connectivity/connection_types";
 import { RTCChannel } from "./connectivity/rtc_channel";
-import { VideoRenderModel } from "./renderer/models/video_render_model";
-import { TransmissionModel } from "./transmission_model";
+import { VideoRenderModel } from "./models/renderer/video_render_model";
+import { TransmissionModel } from "./models/transmission_model";
 
 export class VideoConference{
     readonly connectionHandler;

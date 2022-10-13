@@ -1,6 +1,6 @@
-import { SequenceLogger } from "../../measuring/performance";
-import { RenderObject } from "../renderer";
-import { RenderModel } from "./render_model";
+import { SequenceLogger } from "../../logging/sequence_logger";
+import { RenderObject } from "../../renderer/renderer";
+import { RenderModel } from "../../renderer/render_model";
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 const {KalmanFilter} = require('kalman-filter');
@@ -9,7 +9,7 @@ import {
     SkinnedMesh,
     WebGLRendererParameters
   } from 'three';
-import { Helper } from "../../mediapipe/helper";
+import { Helper } from "../../etc/helper";
 
 export class ExpressionTest implements RenderModel{
 

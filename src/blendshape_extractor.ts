@@ -1,8 +1,8 @@
 import { FaceMesh, InputImage, MatrixData } from "@mediapipe/face_mesh";
 import { Encoder } from "./encoding/encoder";
 import { Renderer, RenderObject } from "./renderer/renderer";
-import { VideoRenderModel } from "./renderer/models/video_render_model";
-import{ BLENDSHAPE_REF_FACE } from "./mediapipe/face_geom";
+import { VideoRenderModel } from "./models/renderer/video_render_model";
+import{ BLENDSHAPE_REF_FACE } from "./etc/face_geom";
 import { Feature, Normalizer, LandmarkView, FeatureUI, rotateCoordinate } from "./etc/blendshape";
 
 class Extractor{

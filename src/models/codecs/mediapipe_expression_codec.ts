@@ -1,9 +1,9 @@
 import { RenderObject } from "../../renderer/renderer";
 import { FaceMesh, InputImage, NormalizedLandmarkList, MatrixData } from "@mediapipe/face_mesh";
-import { EncodableArray, EncodableCoordinates, EncodableNumber } from "../types";
-import { Codec } from "./codec";
+import { EncodableArray, EncodableCoordinates, EncodableNumber } from "../../encoding/types";
+import { Codec } from "../../encoding/codec";
 
-export class MediapipeBlendshapeCodec implements Codec{
+export class MediapipeExpressionCodec implements Codec{
     private readonly faceMesh : FaceMesh;
     private readonly LIBRARY_FACE_MESH =  'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/';
     private currentMatrix : MatrixData;
@@ -13,7 +13,7 @@ export class MediapipeBlendshapeCodec implements Codec{
     init = false;
     private PRECISION = 8;
 
-    private translationMatrixBinaryLength = EncodableArray.getEncodedSize(468, EncodableCoordinates, this.PRECISION, false);
+    private translationMatrixBinaryLength = EncodableArray.getEncodedSize(16, EncodableNumber, this.PRECISION, false);
     private landmarksBinaryLength = EncodableArray.getEncodedSize(468, EncodableCoordinates, this.PRECISION, false);
 
     constructor(){
@@ -77,14 +77,14 @@ export class MediapipeBlendshapeCodec implements Codec{
           });
         }
         const out = new Int8Array(this.landmarksBinaryLength + this.translationMatrixBinaryLength);
-        out.set(this.currentVcoords.encode(EncodableCoordinates, this.PRECISION), 0);
-        out.set(landmarkData.encode(EncodableCoordinates, this.PRECISION), this.translationMatrixBinaryLength)
+        out.set(geomData.encode(EncodableNumber, this.PRECISION), 0);
+        out.set(this.currentVcoords.encode(EncodableCoordinates, this.PRECISION), this.translationMatrixBinaryLength)
 
         return out;
     }
 
     decodeFrame(data : Int8Array) : RenderObject {
-      const geomData = EncodableArray.decode(data.slice(0, this.translationMatrixBinaryLength), EncodableCoordinates, this.PRECISION);
+      const geomData = EncodableArray.decode(data.slice(0, this.translationMatrixBinaryLength), EncodableNumber, this.PRECISION);
       const landmarkData = EncodableArray.decode(data.slice(this.translationMatrixBinaryLength, data.length), EncodableCoordinates, this.PRECISION);
 
       return new RenderObject({translation : geomData.getValue(), landmarks : landmarkData.getValue()});

@@ -1,5 +1,5 @@
-import { PerSecondItem, SequenceLogger, TimeMeasuringItem } from "../measuring/performance";
-import { RenderModel } from "./models/render_model";
+import { PerSecondItem, SequenceLogger, TimeMeasuringItem } from "../logging/sequence_logger";
+import { RenderModel } from "./render_model";
 
 export class Renderer{
 
@@ -8,8 +8,7 @@ export class Renderer{
     private renderModel : RenderModel;
 
     onData(renderObject: RenderObject) : void{}
-
-
+    
     constructor(domElement: HTMLElement){
         this.domElement = domElement;
         this.sequenceLogger = new SequenceLogger();
@@ -67,5 +66,4 @@ export class RenderObject{
         this.data = data;
         this.rtcStats = rtcStats?rtcStats:false;
     }
-
 }

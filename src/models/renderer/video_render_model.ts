@@ -1,6 +1,6 @@
-import { SequenceLogger, TimeMeasuringItem } from "../../measuring/performance";
-import { RenderObject } from "../renderer";
-import { RenderModel } from "./render_model";
+import { SequenceLogger, TimeMeasuringItem } from "../../logging/sequence_logger";
+import { RenderObject } from "../../renderer/renderer";
+import { RenderModel } from "../../renderer/render_model";
 
 const S_TO_MS = 1000;
 

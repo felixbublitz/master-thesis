@@ -1,18 +1,17 @@
-import { SequenceLogger } from "../../measuring/performance";
-import { RenderObject } from "../renderer";
-import { RenderModel } from "./render_model";
+import { SequenceLogger } from "../../logging/sequence_logger";
+import { RenderObject } from "../../renderer/renderer";
+import { RenderModel } from "../../renderer/render_model";
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import Stats from 'three/examples/jsm/libs/stats.module'
 
 import {
     SkinnedMesh,
     WebGLRendererParameters
   } from 'three';
-import { Helper } from "../../mediapipe/helper";
-import { Feature, Normalizer, rotateCoordinate } from "../../etc/blendshape";
-import { BLENDSHAPE_EYEBROW_UP, BLENDSHAPE_EYES_CLOSED, BLENDSHAPE_MOUTH_O, BLENDSHAPE_MOUTH_OPEN, BLENDSHAPE_MOUTH_SMILE, BLENDSHAPE_REF_FACE } from "../../mediapipe/face_geom";
+import { Helper } from "../../etc/helper";
 
-export class BlendshapeRendermodel implements RenderModel{
+export class Replica3DRenderModel implements RenderModel{
 
   domRenderer : HTMLCanvasElement = document.createElement('canvas');
   private width = 320;
@@ -24,15 +23,9 @@ export class BlendshapeRendermodel implements RenderModel{
   private character : THREE.Group;
   private rotation_o : THREE.Quaternion;
   private scale_o : any;
-  private mesh : THREE.Mesh;
-  private mouthFeature : Feature;
-  private eyesFeature : Feature;
-  private eyeBrowFeature : Feature;
 
 
-
-
-  private loadModel(file : string) :  Promise<[THREE.Group, THREE.Mesh]>{
+  private loadModel(file : string) :  Promise<THREE.Group>{
     return new Promise( ( res, rej ) => {
         const loader = new GLTFLoader();
         loader.load(file, function ( gltf ) {
@@ -44,15 +37,14 @@ export class BlendshapeRendermodel implements RenderModel{
               child1.receiveShadow = true;
               child1.geometry.computeVertexNormals(); 
               obj = child1 as SkinnedMesh;
-              console.log(obj.morphTargetDictionary);
             }});	
-          res([gltf.scene, obj]);
+          res(gltf.scene);
         });		
     });
   }
 
   private async loadCharacter(){
-    [this.character, this.mesh] = await this.loadModel( '../assets/character_blendshapes.glb' );
+    this.character = await this.loadModel( '../assets/character_rigged.gltf' );
     const size = new THREE.Box3().setFromObject(this.character).getSize(new THREE.Vector3());  
     this.character.name = 'character';
     this.character.scale.set(1/size.x,1/size.x,1/size.x);
@@ -61,26 +53,12 @@ export class BlendshapeRendermodel implements RenderModel{
   }
 
   constructor(){
-    
-    this.mouthFeature = new Feature([78,308,13,14], [2,200,214,432], BLENDSHAPE_REF_FACE);
-    this.eyesFeature = new Feature([159,145], [29,22], BLENDSHAPE_REF_FACE);
-    this.eyeBrowFeature = new Feature([66], [104,55], BLENDSHAPE_REF_FACE);
-
-
-    this.mouthFeature.addBlendshape(BLENDSHAPE_MOUTH_OPEN);
-    this.mouthFeature.addBlendshape(BLENDSHAPE_MOUTH_SMILE);
-    this.eyesFeature.addBlendshape(BLENDSHAPE_EYES_CLOSED);
-    this.eyeBrowFeature.addBlendshape(BLENDSHAPE_EYEBROW_UP);
-
-    //this.mouthFeature.addBlendshape(BLENDSHAPE_MOUTH_O);
-
-
-
       this.loadCharacter();
       this.group = new THREE.Object3D();
     
       this.domRenderer.width = this.width;
       this.domRenderer.height = this.height;
+      
       this.scene = new THREE.Scene();
       this.renderer = new THREE.WebGLRenderer({
           canvas: this.domRenderer,
@@ -114,13 +92,12 @@ export class BlendshapeRendermodel implements RenderModel{
  
 
   renderFrame(renderObject: RenderObject): void {
-    let landmarks = Helper.scaleLandmarks(renderObject.data.landmarks, 320, 180);
-    let translation = renderObject.data.translation;
+    let landmarks = Helper.scaleLandmarks(renderObject.data, 320, 180);
 
     if (landmarks != null){
       this.group.clear();
       this.alignModel(landmarks);
-      this.animate(translation);
+      this.animate(landmarks);
       this.group.add(this.character);
     }
     
@@ -128,32 +105,34 @@ export class BlendshapeRendermodel implements RenderModel{
   }
 
   private animate(landmarks : any){
+    const mouthTop = landmarks[13];
+    const mouthBottom = landmarks[14];
+    const mouthRightTop = landmarks[415];
+    const mouthRightBottom = landmarks[324];
+    const eyeBrownBottom =landmarks[105];
+    const eyeBrownTop = landmarks[67];
+    const eyeTop = landmarks[145];
+    const eyeBottom = landmarks[159];
+    const scale = Helper.getScale(landmarks);
     
-    let points = [];
-    for(let i = 0; i<468; i++){
-        points.push(rotateCoordinate(0,0,landmarks[i].x, landmarks[i].y, 180));
-    }
-    const normalizer = new Normalizer(points);
-    points = normalizer.append(points);
-
-    this.mouthFeature.update(points);
-    this.eyeBrowFeature.update(points);
-    this.eyesFeature.update(points);
-
-    
-    
-    this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['mouthOpen']] = this.mouthFeature.blendshapes[0].getValue();
-    this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['mouthSmile']] = this.mouthFeature.blendshapes[1].getValue();
-    this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['eyesClosed']] = this.eyesFeature.blendshapes[0].getValue();
+    const eyeDistance = (this.getDistance(eyeTop, eyeBottom)/scale - 0.04)/0.04;
+    const openBrownDistance = 1-((this.getDistance(eyeBrownTop, eyeBrownBottom)/scale-0.17)/0.065);
+    const openMouthDistance = ((this.getDistance(mouthTop, mouthBottom) - this.getDistance(mouthRightBottom, mouthRightTop))/scale)/0.15;
 
 
-    this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['browOuterUpLeft']] = this.eyesFeature.blendshapes[0].getValue();
-    this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['browOuterUpRight']] = this.eyesFeature.blendshapes[0].getValue();
-    this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['browInnerUp']] = this.eyeBrowFeature.blendshapes[0].getValue();
+    const boneMouthBottom = this.character.getObjectByName('Bone');
+    boneMouthBottom.rotation.z = -0.2 - 0.65*openMouthDistance;
 
+    const boneEyeBrown1 = this.character.getObjectByName('Bone005');
+    boneEyeBrown1.position.y = 0.101 + openBrownDistance*0.02 ;
+    const boneEyeBrown2 = this.character.getObjectByName('Bone006');
+    boneEyeBrown2.position.y = 0.101 + openBrownDistance*0.02 ;
 
-   // this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['viseme_O']] = this.mouthFeature.blendshapes[2].getValue();
+    const boneEyeLeft = this.character.getObjectByName('Bone007');
+    boneEyeLeft.scale.y = 1 + (1-eyeDistance) * -2;
 
+    const boneEyeRight = this.character.getObjectByName('Bone008');
+    boneEyeRight.scale.y = 1 + (1-eyeDistance) * -2;
   }
 
     private getDistance(v1 : THREE.Vector3, v2 : THREE.Vector3){

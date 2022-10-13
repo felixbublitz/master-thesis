@@ -1,5 +1,5 @@
-import { Codec } from './codecs/codec';
-import { SequenceLogger, TimeMeasuringItem } from '../measuring/performance';
+import { Codec } from './codec';
+import { SequenceLogger, TimeMeasuringItem } from '../logging/sequence_logger';
 
 export class Encoder{
     private readonly encodingTasks : Map<number, Codec>

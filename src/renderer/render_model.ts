@@ -1,5 +1,5 @@
-import { SequenceLogger } from "../../measuring/performance";
-import { RenderObject } from "../renderer";
+import { SequenceLogger } from "../logging/sequence_logger";
+import { RenderObject } from "./renderer";
 
 export interface RenderModel{
     domRenderer : HTMLElement;

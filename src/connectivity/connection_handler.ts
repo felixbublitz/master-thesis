@@ -1,4 +1,4 @@
-import { PerSecondItem, SequenceLogger, StringItem, TimeMeasuringItem, ValueMeasuringItem } from "../measuring/performance";
+import { PerSecondItem, SequenceLogger, StringItem, TimeMeasuringItem, ValueMeasuringItem } from "../logging/sequence_logger";
 import { AddressLabel, SocketPackage } from "./connection_types";
 import { RTCChannel } from "./rtc_channel";
 
