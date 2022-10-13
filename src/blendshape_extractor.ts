@@ -29,7 +29,7 @@ class Extractor{
 
         this.features = new Array();
         this.features.push(new FeatureUI("Mouth", new Feature([78,308,13,14], [2,200,214,432], BLENDSHAPE_REF_FACE), this.width, this.height, ()=>{return this.lastPoints}));
-        this.features.push(new FeatureUI('Eyes', new Feature([159,145], [29,22], BLENDSHAPE_REF_FACE), this.width, this.height, ()=>{return this.lastPoints}));
+        this.features.push(new FeatureUI('Eyes', new Feature([159,145], [162,188], BLENDSHAPE_REF_FACE), this.width, this.height, ()=>{return this.lastPoints}));
         this.features.push(new FeatureUI('Eyebrows', new Feature([66], [104,55], BLENDSHAPE_REF_FACE), this.width, this.height, ()=>{return this.lastPoints}));
         
         this.initExtractor();

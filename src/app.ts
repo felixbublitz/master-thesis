@@ -67,7 +67,7 @@ class App{
         let sample;
 
         this.videoConference.peers.map((peer, peerId) => {
-            document.getElementById(DomElement.peerStats(peerId)).innerText ="";
+            document.getElementById(DomElement.peerStats(peerId)).innerHTML ="Stats:<br>";
 
         });
 
@@ -117,7 +117,7 @@ class App{
         renderDom.id = DomElement.peerContent(peerId);
         renderDom.style.minWidth = "320px";
         renderDom.style.minHeight = "180px";
-        renderDom.style.background = "#0053cf";
+        renderDom.style.background = "rgb(46, 46, 46)";
 
         statsContainer.style.display = "block";
         statsContainer.style.position = "absolute";
@@ -128,7 +128,8 @@ class App{
         statsContainer.style.textAlign = "left";
         statsContainer.style.opacity = "0.7";
         stats.style.position = "relative";
-        stats.style.padding = "0";
+        stats.innerHTML = "Stats:";
+        stats.style.padding = "4px";
         statsContainer.style.background = "0000008f";
         statsContainer.appendChild(stats);
 

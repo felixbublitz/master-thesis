@@ -63,7 +63,7 @@ export class BlendshapeRendermodel implements RenderModel{
   constructor(){
     
     this.mouthFeature = new Feature([78,308,13,14], [2,200,214,432], BLENDSHAPE_REF_FACE);
-    this.eyesFeature = new Feature([159,145], [29,22], BLENDSHAPE_REF_FACE);
+    this.eyesFeature = new Feature([159,145], [162,188], BLENDSHAPE_REF_FACE);
     this.eyeBrowFeature = new Feature([66], [104,55], BLENDSHAPE_REF_FACE);
 
 
