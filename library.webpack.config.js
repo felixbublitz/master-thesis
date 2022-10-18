@@ -27,6 +27,9 @@ const webConfig = {
      }),
    ],
    resolve : {
+alias : {
+            zlib: require.resolve('browserify-zlib')
+},
     fallback : { 
         fs:  false,
     },
