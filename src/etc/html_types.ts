@@ -1,5 +1,6 @@
 export class DomElement{
     static BT_INIT_CALL= "btn-init-call";
+    static BT_INIT_APP= "btn-init-app";
     static BT_EXPORT = "btn-export";
     static SL_VIDEO_MODE = "video-mode";
     static UL_PEER_ITEMS = "peer-videos";

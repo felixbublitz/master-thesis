@@ -5,133 +5,120 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 import {
-    SkinnedMesh,
-    WebGLRendererParameters
-  } from 'three';
+  SkinnedMesh,
+  WebGLRendererParameters
+} from 'three';
 import { Helper } from "../../etc/helper";
 import { Feature, Normalizer, rotateCoordinate } from "../../etc/blendshape";
-import { BLENDSHAPE_EYEBROW_UP, BLENDSHAPE_EYES_CLOSED, BLENDSHAPE_MOUTH_O, BLENDSHAPE_MOUTH_OPEN, BLENDSHAPE_MOUTH_SMILE, BLENDSHAPE_REF_FACE } from "../../etc/face_geom";
+import { BLENDSHAPE_EYEBROW_UP, BLENDSHAPE_EYES_CLOSED, BLENDSHAPE_MOUTH_OPEN, BLENDSHAPE_MOUTH_SMILE, BLENDSHAPE_REF_FACE } from "../../etc/face_geom";
 
-export class BlendshapeRendermodel implements RenderModel{
+export class BlendshapeRendermodel implements RenderModel {
+  domRenderer: HTMLCanvasElement = document.createElement('canvas');
+  private scene: THREE.Scene;
+  private renderer: THREE.WebGLRenderer;
+  private camera: THREE.PerspectiveCamera;
+  private group: THREE.Object3D;
+  private character: THREE.Group;
+  private rotation_o: THREE.Quaternion;
+  private scale_o: any;
+  private mesh: THREE.Mesh;
+  private mouthFeature: Feature;
+  private eyesFeature: Feature;
+  private eyeBrowFeature: Feature;
 
-  domRenderer : HTMLCanvasElement = document.createElement('canvas');
-  private width = 320;
-  private height = 180;
-  private scene : THREE.Scene;
-  private renderer : THREE.WebGLRenderer;
-  private camera : THREE.PerspectiveCamera;
-  private group : THREE.Object3D;
-  private character : THREE.Group;
-  private rotation_o : THREE.Quaternion;
-  private scale_o : any;
-  private mesh : THREE.Mesh;
-  private mouthFeature : Feature;
-  private eyesFeature : Feature;
-  private eyeBrowFeature : Feature;
-
-
-
-
-  private loadModel(file : string) :  Promise<[THREE.Group, THREE.Mesh]>{
-    return new Promise( ( res, rej ) => {
-        const loader = new GLTFLoader();
-        loader.load(file, function ( gltf ) {
-          var obj: THREE.SkinnedMesh;          
-          gltf.scene.traverse(function (child) {
-            if (child.type == 'SkinnedMesh') {
-              const child1 = child as THREE.Mesh;
-              child1.castShadow = true;
-              child1.receiveShadow = true;
-              child1.geometry.computeVertexNormals(); 
-              obj = child1 as SkinnedMesh;
-              console.log(obj.morphTargetDictionary);
-            }});	
-          res([gltf.scene, obj]);
-        });		
+  private loadModel(file: string): Promise<[THREE.Group, THREE.Mesh]> {
+    return new Promise((res, rej) => {
+      const loader = new GLTFLoader();
+      loader.load(file, function (gltf) {
+        var obj: THREE.SkinnedMesh;
+        gltf.scene.traverse(function (child) {
+          if (child.type == 'SkinnedMesh') {
+            const child1 = child as THREE.Mesh;
+            child1.castShadow = true;
+            child1.receiveShadow = true;
+            child1.geometry.computeVertexNormals();
+            obj = child1 as SkinnedMesh;
+          }
+        });
+        res([gltf.scene, obj]);
+      });
     });
   }
 
-  private async loadCharacter(){
-    [this.character, this.mesh] = await this.loadModel( '../assets/character_blendshapes.glb' );
-    const size = new THREE.Box3().setFromObject(this.character).getSize(new THREE.Vector3());  
+  private async loadCharacter() {
+    [this.character, this.mesh] = await this.loadModel('../assets/models/character-rigged.gltf');
+    const size = new THREE.Box3().setFromObject(this.character).getSize(new THREE.Vector3());
     this.character.name = 'character';
-    this.character.scale.set(1/size.x,1/size.x,1/size.x);
-    this.character.scale.set(1700,1700,1700);
-    this.character.position.set(0,-1100,0);
+    this.character.scale.set(1 / size.x, 1 / size.x, 1 / size.x);
+    this.character.scale.set(2000, 2000, 2000);
+    this.character.position.set(0, -1300, 0);
   }
 
-  constructor(){
-    
-    this.mouthFeature = new Feature([78,308,13,14], [2,200,214,432], BLENDSHAPE_REF_FACE);
-    this.eyesFeature = new Feature([159,145], [162,188], BLENDSHAPE_REF_FACE);
-    this.eyeBrowFeature = new Feature([66], [104,55], BLENDSHAPE_REF_FACE);
-
+  constructor(width: number, height: number) {
+    this.mouthFeature = new Feature([0, 1, 2, 3], [4, 5, 6, 7], BLENDSHAPE_REF_FACE);
+    this.eyesFeature = new Feature([8], [9, 10], BLENDSHAPE_REF_FACE);
+    this.eyeBrowFeature = new Feature([11], [12, 13], BLENDSHAPE_REF_FACE);
 
     this.mouthFeature.addBlendshape(BLENDSHAPE_MOUTH_OPEN);
     this.mouthFeature.addBlendshape(BLENDSHAPE_MOUTH_SMILE);
     this.eyesFeature.addBlendshape(BLENDSHAPE_EYES_CLOSED);
     this.eyeBrowFeature.addBlendshape(BLENDSHAPE_EYEBROW_UP);
 
-    //this.mouthFeature.addBlendshape(BLENDSHAPE_MOUTH_O);
+    this.loadCharacter();
+    this.group = new THREE.Object3D();
 
+    this.domRenderer.width = width;
+    this.domRenderer.height = height;
+    this.scene = new THREE.Scene();
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: this.domRenderer,
+      antialias: true,
+      devicePixelRation: window.devicePixelRatio || 1
+    } as WebGLRendererParameters);
 
+    this.renderer.setClearColor(0xffffff);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.outputEncoding = THREE.sRGBEncoding;
 
-      this.loadCharacter();
-      this.group = new THREE.Object3D();
-    
-      this.domRenderer.width = this.width;
-      this.domRenderer.height = this.height;
-      this.scene = new THREE.Scene();
-      this.renderer = new THREE.WebGLRenderer({
-          canvas: this.domRenderer,
-          antialias : true,
-          devicePixelRation: window.devicePixelRatio || 1
-      } as WebGLRendererParameters);
+    const loader = new THREE.TextureLoader();
+    loader.load('../assets/img/near-background.jpg', (texture) => {
+      this.scene.background = texture;
+    });
 
-      this.renderer.setClearColor( 0xffffff );
-      this.renderer.shadowMap.enabled = true;
-      this.renderer.outputEncoding = THREE.sRGBEncoding;
+    this.camera = new THREE.PerspectiveCamera(45, 1920 / 1080, 1, 1000);
+    this.camera.position.z = 200;
 
-      const loader = new THREE.TextureLoader();
-      loader.load('../assets/background.png' , (texture) => {
-        this.scene.background = texture;
-      });
+    this.renderer.setPixelRatio(window.devicePixelRatio * 2);
+    this.renderer.setSize(width, height);
 
-      this.camera = new THREE.PerspectiveCamera(45, 1920 / 1080, 1, 1000);
-      this.camera.position.z = 200;
-
-      const light = new THREE.HemisphereLight(0xffeeb1, 0x080820, 2); 
-      this.scene.add(light);
-      this.scene.add(this.group);
+    const light = new THREE.HemisphereLight(0xffeeb1, 0x080820, 2);
+    this.scene.add(light);
+    this.scene.add(this.group);
   }
 
   customPerformanceMeasurement(meter: SequenceLogger, renderObject: RenderObject): boolean {
-      return false;
+    return false;
   }
 
-  init(data: any): void {}
-
- 
+  init(data: any): void { }
 
   renderFrame(renderObject: RenderObject): void {
     let landmarks = Helper.scaleLandmarks(renderObject.data.landmarks, 320, 180);
-    let translation = renderObject.data.translation;
 
-    if (landmarks != null){
+    if (landmarks != null) {
       this.group.clear();
       this.alignModel(landmarks);
-      this.animate(translation);
+      this.animate(landmarks);
       this.group.add(this.character);
     }
-    
+
     this.renderer.render(this.scene, this.camera);
   }
 
-  private animate(landmarks : any){
-    
+  private animate(landmarks: any) {
     let points = [];
-    for(let i = 0; i<468; i++){
-        points.push(rotateCoordinate(0,0,landmarks[i].x, landmarks[i].y, 180));
+    for (let i = 0; i < 14; i++) {
+      points.push(rotateCoordinate(0, 0, landmarks[i].x, landmarks[i].y, 180));
     }
     const normalizer = new Normalizer(points);
     points = normalizer.append(points);
@@ -140,73 +127,59 @@ export class BlendshapeRendermodel implements RenderModel{
     this.eyeBrowFeature.update(points);
     this.eyesFeature.update(points);
 
-    
-    
-    this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['mouthOpen']] = this.mouthFeature.blendshapes[0].getValue();
+    this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['jawOpen']] = this.mouthFeature.blendshapes[0].getValue();
     this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['mouthSmile']] = this.mouthFeature.blendshapes[1].getValue();
     this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['eyesClosed']] = this.eyesFeature.blendshapes[0].getValue();
-
-
     this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['browOuterUpLeft']] = this.eyesFeature.blendshapes[0].getValue();
     this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['browOuterUpRight']] = this.eyesFeature.blendshapes[0].getValue();
     this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['browInnerUp']] = this.eyeBrowFeature.blendshapes[0].getValue();
-
-
-   // this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['viseme_O']] = this.mouthFeature.blendshapes[2].getValue();
-
   }
 
-    private getDistance(v1 : THREE.Vector3, v2 : THREE.Vector3){
-      return Math.sqrt((v1.x - v2.x)**2 + (v1.y-v2.y)**2 + (v1.z-v2.z)**2);
-    }
+  private getLowPassQuaternion(last: THREE.Quaternion, current: THREE.Quaternion, threshold: number): THREE.Quaternion {
+    if (last == null)
+      return current;
 
-    private getLowPassQuaternion(last : THREE.Quaternion, current : THREE.Quaternion, threshold : number) : THREE.Quaternion{
-      if(last == null)
-        return current;
-        
-        current.w = threshold * last.w + (1-threshold) * current.w;
-        current.x = threshold * last.x + (1-threshold) * current.x;
-        current.y = threshold * last.y + (1-threshold) * current.y;
-        current.z = threshold * last.z + (1-threshold) * current.z;
+    current.w = threshold * last.w + (1 - threshold) * current.w;
+    current.x = threshold * last.x + (1 - threshold) * current.x;
+    current.y = threshold * last.y + (1 - threshold) * current.y;
+    current.z = threshold * last.z + (1 - threshold) * current.z;
 
-        return current;
-    }
+    return current;
+  }
 
-    private getLowPassVector(last : THREE.Vector3, current : THREE.Vector3, threshold : number) : THREE.Vector3{
-      if(last == null)
-        return current;
+  private getLowPassVector(last: THREE.Vector3, current: THREE.Vector3, threshold: number): THREE.Vector3 {
+    if (last == null)
+      return current;
 
-        current.x = threshold * last.x + (1-threshold) * current.x;
-        current.y = threshold * last.y + (1-threshold) * current.y;
-        current.z = threshold * last.z + (1-threshold) * current.z;
+    current.x = threshold * last.x + (1 - threshold) * current.x;
+    current.y = threshold * last.y + (1 - threshold) * current.y;
+    current.z = threshold * last.z + (1 - threshold) * current.z;
 
-        return current;
-    }
-    
-    private alignModel(landmarks : any){      
-      //normalize
-      this.group.rotation.x = 0;
-      this.group.rotation.y = 0;
-      this.group.rotation.z = 0;
+    return current;
+  }
 
-      //rotation
-      const rotation = this.getLowPassQuaternion(this.rotation_o, Helper.getRotation(landmarks), 0.5);
-      this.rotation_o = rotation;
-      this.group.applyQuaternion(rotation);
+  private alignModel(landmarks: any) {
+    //normalize
+    this.group.rotation.x = 0;
+    this.group.rotation.y = 0;
+    this.group.rotation.z = 0;
 
-      //scale
-      const scale = Helper.getScale(landmarks);
-      this.group.scale.copy(this.getLowPassVector(new THREE.Vector3().addScalar(this.scale_o), new THREE.Vector3().addScalar(scale), 0.5));
+    //rotation
+    const rotation = this.getLowPassQuaternion(this.rotation_o, Helper.getRotation(landmarks[14], landmarks[15], landmarks[16], landmarks[17], landmarks[18]), 0.5);
+    this.rotation_o = rotation;
+    this.group.applyQuaternion(rotation);
 
-      this.scale_o = scale;
+    //scale
+    const scale = Helper.getScale(landmarks[17], landmarks[18]);
+    this.group.scale.copy(this.getLowPassVector(new THREE.Vector3().addScalar(this.scale_o), new THREE.Vector3().addScalar(scale), 0.5));
 
-      //translate
-      const translation = Helper.getTranslation(landmarks);
-      this.group.position.copy(translation);
+    this.scale_o = scale;
 
+    //translate
+    const translation = Helper.getTranslation(landmarks[14]);
+    this.group.position.copy(translation);
+  }
 
-}
+  destruct(): void { }
 
-    destruct(): void {}
-    
 }

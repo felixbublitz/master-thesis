@@ -6,8 +6,8 @@ import { TransmissionModel } from "./models/transmission_model";
 import { VideoRenderModel } from "./models/renderer/video_render_model";
 import { MediapipeLandmarksCodec } from "./models/codecs/mediapipe_landmarks_codec";
 import { WireframeRenderModel } from "./models/renderer/wireframe_render_model";
-import { MediapipeExpressionCodec } from "./models/codecs/mediapipe_expression_codec";
-import { ExpressionTransferRenderModel } from "./models/renderer/expression_transfer_render_model";
+import { MediapipeNormalizedLandmarksCodec } from "./models/codecs/mediapipe_norm_landmarks_codec";
+import { FaceswapRenderModel } from "./models/renderer/faceswap_render_model";
 import { Replica3DRenderModel } from "./models/renderer/replica3d_render_model";
 import { MediapipeTransformedLandmarksCodec } from "./models/codecs/mediapipe_transformed_landmarks_codec";
 import { BlendshapeRendermodel } from "./models/renderer/blendshape_render_model";
@@ -19,14 +19,29 @@ class App{
     
     constructor(serverAddress : string, serverPort : number){
         this.performanceSheet = new Sheet(); 
-        this.videoConference = new VideoConference(`ws://${serverAddress}:${serverPort}`);
 
-        //init available transmission models
-        this.videoConference.addTransmissionModel({name : "Video", codec: null, renderModel: new VideoRenderModel()} as TransmissionModel)
-        this.videoConference.addTransmissionModel({name : "Wireframe", codec: new MediapipeLandmarksCodec(), renderModel: new WireframeRenderModel()} as TransmissionModel)
-        this.videoConference.addTransmissionModel({name : "Face Swap", codec: new MediapipeExpressionCodec(), renderModel: new ExpressionTransferRenderModel()} as TransmissionModel)
-        this.videoConference.addTransmissionModel({name : "Puppetry (Rigged)", codec: new MediapipeTransformedLandmarksCodec(), renderModel: new Replica3DRenderModel()} as TransmissionModel)
-        this.videoConference.addTransmissionModel({name : "Puppetry (Blendshape)", codec: new MediapipeBlendshapeCodec(), renderModel: new BlendshapeRendermodel()} as TransmissionModel)
+        
+        document.getElementById(DomElement.BT_INIT_APP).onclick = (()=>{
+            const videoUrl = prompt(config.SELECT_VIDEO_PROMPT)
+            document.getElementById(DomElement.UL_PEER_ITEMS).innerHTML = "";
+            
+            this.videoConference = new VideoConference(`ws://${serverAddress}:${serverPort}`, videoUrl);
+
+            //init available transmission models
+            this.videoConference.addTransmissionModel({name : "Video", codec: null, renderModel: new VideoRenderModel(config.VIDEO_WIDTH, config.VIDEO_HEIGHT)} as TransmissionModel)
+            this.videoConference.addTransmissionModel({name : "Wireframe", codec: new MediapipeLandmarksCodec(), renderModel: new WireframeRenderModel(config.VIDEO_WIDTH, config.VIDEO_HEIGHT)} as TransmissionModel)
+            this.videoConference.addTransmissionModel({name : "Face Swap", codec: new MediapipeNormalizedLandmarksCodec(), renderModel: new FaceswapRenderModel(config.VIDEO_WIDTH, config.VIDEO_HEIGHT)} as TransmissionModel)
+            this.videoConference.addTransmissionModel({name : "Puppetry (Rigged)", codec: new MediapipeTransformedLandmarksCodec(), renderModel: new Replica3DRenderModel(config.VIDEO_WIDTH, config.VIDEO_HEIGHT)} as TransmissionModel)
+            this.videoConference.addTransmissionModel({name : "Puppetry (Blendshape)", codec: new MediapipeBlendshapeCodec(), renderModel: new BlendshapeRendermodel(config.VIDEO_WIDTH, config.VIDEO_HEIGHT)} as TransmissionModel)
+    
+            for(const transmissionModel of this.videoConference.transmissionModels){
+                const option = document.createElement('option');
+                option.value = transmissionModel.name;
+                option.innerText = transmissionModel.name;
+                document.getElementById(DomElement.SL_VIDEO_MODE).appendChild(option);
+            }
+            
+            window.setInterval(() => {this.updateStats()}, config.STATS_INTERVAL)
 
         this.videoConference.onConnected = (async (dom : HTMLElement) => {
             this.addPeer(this.videoConference.peerId, dom, true);
@@ -40,6 +55,9 @@ class App{
             this.removePeer(peerId);
         });
 
+
+        })
+
         document.getElementById(DomElement.BT_INIT_CALL).onclick = (()=>{
             this.videoConference.call(parseInt(prompt(config.TEXT_INSERT_PEER_ID)));
         })
@@ -48,18 +66,11 @@ class App{
             this.performanceSheet.export(config.STATS_EXPORT_FILE_NAME);
         })
  
-        for(const transmissionModel of this.videoConference.transmissionModels){
-                const option = document.createElement('option');
-                option.value = transmissionModel.name;
-                option.innerText = transmissionModel.name;
-                document.getElementById(DomElement.SL_VIDEO_MODE).appendChild(option);
-        }
-
+      
         document.getElementById(DomElement.SL_VIDEO_MODE).onchange = ((ev : Event)=>{
             this.videoConference.changeTransmissionModel((document.getElementById(DomElement.SL_VIDEO_MODE) as HTMLSelectElement).value);
         })
 
-        window.setInterval(() => {this.updateStats()}, config.STATS_INTERVAL)
     }
 
     private async updateStats(){

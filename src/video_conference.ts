@@ -3,8 +3,9 @@ import { Renderer, RenderObject } from "./renderer/renderer";
 import { ConnectionHandler } from "./connectivity/connection_handler";
 import { AddressLabel, SocketPackage } from "./connectivity/connection_types";
 import { RTCChannel } from "./connectivity/rtc_channel";
-import { VideoRenderModel } from "./models/renderer/video_render_model";
 import { TransmissionModel } from "./models/transmission_model";
+import { VideoRenderModel } from "./models/renderer/video_render_model";
+import config from "./config";
 
 export class VideoConference{
     readonly connectionHandler;
@@ -29,7 +30,7 @@ export class VideoConference{
         return this.connectionHandler.getPeers();
     }
 
-    constructor(wsAddr : string){
+    constructor(wsAddr : string, videoUrl : string){
         this.transmissionModels = new Array<TransmissionModel>();
         const nModel = {name: "None"} as TransmissionModel;
         this.addTransmissionModel(nModel);
@@ -37,7 +38,7 @@ export class VideoConference{
 
         this.connectionHandler = new ConnectionHandler(); 
         this.renderer = new Array<Renderer>();
-        this.encoder = new Encoder(); 
+        this.encoder = new Encoder(videoUrl == ''?'': 'assets/test_videos/' + videoUrl +'.mp4'); 
         this.encoder.onFrameAvailable = (peerId, encoded) => {
             this.connectionHandler.sendRTCData(peerId, RTCChannel.DataType.FrameData, encoded)
         }
@@ -60,7 +61,7 @@ export class VideoConference{
         this.connectionHandler.onIDReceived = async (ownId) => {
             let dom = document.createElement("div");
             this.renderer[this.peerId] = new Renderer(dom);
-            this.renderer[this.peerId].setRenderModel(new VideoRenderModel());
+            this.renderer[this.peerId].setRenderModel(new VideoRenderModel(config.VIDEO_WIDTH, config.VIDEO_HEIGHT));
             this.renderer[this.peerId].render(new RenderObject({stream: await this.encoder.getStream()}));
             this.onConnected(dom);
         };

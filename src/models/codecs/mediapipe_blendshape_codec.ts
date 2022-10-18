@@ -6,15 +6,10 @@ import { Codec } from "../../encoding/codec";
 export class MediapipeBlendshapeCodec implements Codec{
     private readonly faceMesh : FaceMesh;
     private readonly LIBRARY_FACE_MESH =  'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/';
-    private currentMatrix : MatrixData;
-    private currentLandMarks : NormalizedLandmarkList[];
-    private currentVcoords : EncodableArray;
+    private landmarks : EncodableArray;
 
     init = false;
     private PRECISION = 8;
-
-    private translationMatrixBinaryLength = EncodableArray.getEncodedSize(468, EncodableCoordinates, this.PRECISION, false);
-    private landmarksBinaryLength = EncodableArray.getEncodedSize(468, EncodableCoordinates, this.PRECISION, false);
 
     constructor(){
         this.faceMesh = new FaceMesh({locateFile: (file) => {
@@ -27,6 +22,7 @@ export class MediapipeBlendshapeCodec implements Codec{
     }
 
     private async startFaceDetection(){
+      this.landmarks = new EncodableArray();
         this.faceMesh.setOptions({
           enableFaceGeometry: true,
           maxNumFaces: 1,
@@ -35,20 +31,22 @@ export class MediapipeBlendshapeCodec implements Codec{
           minTrackingConfidence: 0.5
         });
 
-        this.currentVcoords = new EncodableArray();
   
         this.faceMesh.onResults((results) => {
-          if (results.multiFaceLandmarks && results.multiFaceLandmarks [0] != null){
-            this.currentMatrix = results.multiFaceGeometry[0].getPoseTransformMatrix();
-            const a = results.multiFaceGeometry[0].getMesh().getVertexBufferList();
-            this.currentVcoords.empty();
-            //console.log({x : a[10*5+0], y : a[10*5+1]});
-            for(let i = 0; i<468; i++){
-              this.currentVcoords.add(new EncodableCoordinates(a[i*5],a[i*5+1],a[i*5+2]))
+          if (results.multiFaceLandmarks && results.multiFaceLandmarks[0] != null){
+            const vertexBufferList = results.multiFaceGeometry[0].getMesh().getVertexBufferList();
+
+            const blendshapeCoordinates = [78,308,13,14,2,200,214,432,145,160,22,66,104,55];
+            for(const coordinate of blendshapeCoordinates){
+              this.landmarks.add(new EncodableCoordinates(vertexBufferList[coordinate*5],vertexBufferList[coordinate*5+1],vertexBufferList[coordinate*5+2]));
             }
 
+            const alignCoordinates = [6,10,151,234,454];
+            for(const coordinate of alignCoordinates){
+              const transformed = this.transformLandmarks(results.multiFaceLandmarks[0]);
+              this.landmarks.add(new EncodableCoordinates(transformed[coordinate].x,transformed[coordinate].y, transformed[coordinate].z));
+            }
 
-            this.currentLandMarks = results.multiFaceLandmarks;
         }
         });
   
@@ -59,35 +57,12 @@ export class MediapipeBlendshapeCodec implements Codec{
     async encodeFrame(videoDom : HTMLVideoElement) : Promise<Int8Array> {
         if(!this.init) return;
         await this.faceMesh.send({image: videoDom as InputImage});
-
-        const geomData = new EncodableArray();
-        const landmarkData = new EncodableArray();
-
-
-        const ELEMENTS = 16;
-
-
-        if(this.currentMatrix != null && this.currentLandMarks != null){
-          for(let i=0; i<ELEMENTS;i++){
-            geomData.add(new EncodableNumber(this.currentMatrix.getPackedDataList()[i]));
-          }
-          let landmarks = this.transformLandmarks(this.currentLandMarks[0]);
-          landmarks.forEach((landmark : any)=>{
-            landmarkData.add(new EncodableCoordinates(landmark.x, landmark.y, landmark.z))
-          });
-        }
-        const out = new Int8Array(this.landmarksBinaryLength + this.translationMatrixBinaryLength);
-        out.set(this.currentVcoords.encode(EncodableCoordinates, this.PRECISION), 0);
-        out.set(landmarkData.encode(EncodableCoordinates, this.PRECISION), this.translationMatrixBinaryLength)
-
-        return out;
+        return this.landmarks.encode(EncodableCoordinates, this.PRECISION);
     }
 
     decodeFrame(data : Int8Array) : RenderObject {
-      const geomData = EncodableArray.decode(data.slice(0, this.translationMatrixBinaryLength), EncodableCoordinates, this.PRECISION);
-      const landmarkData = EncodableArray.decode(data.slice(this.translationMatrixBinaryLength, data.length), EncodableCoordinates, this.PRECISION);
-
-      return new RenderObject({translation : geomData.getValue(), landmarks : landmarkData.getValue()});
+      const landmarkData = EncodableArray.decode(data, EncodableCoordinates, this.PRECISION);
+      return new RenderObject({landmarks : landmarkData.getValue()});
     }
     
     transformLandmarks = (landmarks : NormalizedLandmarkList) => {

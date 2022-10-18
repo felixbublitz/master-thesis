@@ -14,8 +14,7 @@ import { Helper } from "../../etc/helper";
 export class Replica3DRenderModel implements RenderModel{
 
   domRenderer : HTMLCanvasElement = document.createElement('canvas');
-  private width = 320;
-  private height = 180;
+
   private scene : THREE.Scene;
   private renderer : THREE.WebGLRenderer;
   private camera : THREE.PerspectiveCamera;
@@ -44,7 +43,7 @@ export class Replica3DRenderModel implements RenderModel{
   }
 
   private async loadCharacter(){
-    this.character = await this.loadModel( '../assets/character_rigged.gltf' );
+    this.character = await this.loadModel( '../assets/models/character-rigged.gltf' );
     const size = new THREE.Box3().setFromObject(this.character).getSize(new THREE.Vector3());  
     this.character.name = 'character';
     this.character.scale.set(1/size.x,1/size.x,1/size.x);
@@ -52,12 +51,12 @@ export class Replica3DRenderModel implements RenderModel{
     this.character.position.set(0,-1100,0);
   }
 
-  constructor(){
+  constructor(width : number, height: number){
       this.loadCharacter();
       this.group = new THREE.Object3D();
     
-      this.domRenderer.width = this.width;
-      this.domRenderer.height = this.height;
+      this.domRenderer.width = width;
+      this.domRenderer.height = height;
       
       this.scene = new THREE.Scene();
       this.renderer = new THREE.WebGLRenderer({
@@ -71,7 +70,7 @@ export class Replica3DRenderModel implements RenderModel{
       this.renderer.outputEncoding = THREE.sRGBEncoding;
 
       const loader = new THREE.TextureLoader();
-      loader.load('../assets/background.png' , (texture) => {
+      loader.load('../assets/img/puppetry-background.png' , (texture) => {
         this.scene.background = texture;
       });
 
@@ -113,7 +112,7 @@ export class Replica3DRenderModel implements RenderModel{
     const eyeBrownTop = landmarks[67];
     const eyeTop = landmarks[145];
     const eyeBottom = landmarks[159];
-    const scale = Helper.getScale(landmarks);
+    const scale = Helper.getScale(landmarks[234], landmarks[454]);
     
     const eyeDistance = (this.getDistance(eyeTop, eyeBottom)/scale - 0.04)/0.04;
     const openBrownDistance = 1-((this.getDistance(eyeBrownTop, eyeBrownBottom)/scale-0.17)/0.065);
@@ -169,12 +168,12 @@ export class Replica3DRenderModel implements RenderModel{
       this.group.rotation.z = 0;
 
       //rotation
-      const rotation = this.getLowPassQuaternion(this.rotation_o, Helper.getRotation(landmarks), 0.5);
+      const rotation = this.getLowPassQuaternion(this.rotation_o, Helper.getRotation(landmarks[6],landmarks[10],landmarks[151],landmarks[234],landmarks[454]), 0.5);
       this.rotation_o = rotation;
       this.group.applyQuaternion(rotation);
 
       //scale
-      const scale = Helper.getScale(landmarks);
+      const scale = Helper.getScale(landmarks[234], landmarks[454]);
       this.group.scale.copy(this.getLowPassVector(new THREE.Vector3().addScalar(this.scale_o), new THREE.Vector3().addScalar(scale), 0.5));
 
       this.scale_o = scale;

@@ -10,6 +10,8 @@ class Extractor{
     private readonly LIBRARY_FACE_MESH =  'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/';
     private currentMatrix : MatrixData;
     private wireframeView : LandmarkView;
+    private wireframeView2 : LandmarkView;
+
     domRenderer : HTMLElement = document.createElement('div');
     video : HTMLElement = document.createElement('div');
     width = 320;
@@ -26,10 +28,12 @@ class Extractor{
           }});
 
         this.wireframeView = new LandmarkView("Wireframe", 320,320);
+        this.wireframeView2 = new LandmarkView("Wireframe2", 320,320);
+
 
         this.features = new Array();
         this.features.push(new FeatureUI("Mouth", new Feature([78,308,13,14], [2,200,214,432], BLENDSHAPE_REF_FACE), this.width, this.height, ()=>{return this.lastPoints}));
-        this.features.push(new FeatureUI('Eyes', new Feature([159,145], [162,188], BLENDSHAPE_REF_FACE), this.width, this.height, ()=>{return this.lastPoints}));
+        this.features.push(new FeatureUI('Eyes', new Feature([145], [160,22], BLENDSHAPE_REF_FACE), this.width, this.height, ()=>{return this.lastPoints}));
         this.features.push(new FeatureUI('Eyebrows', new Feature([66], [104,55], BLENDSHAPE_REF_FACE), this.width, this.height, ()=>{return this.lastPoints}));
         
         this.initExtractor();
@@ -40,7 +44,7 @@ class Extractor{
         let encoder = new Encoder();
 
         const videoRenderer = new Renderer(this.video);
-        videoRenderer.setRenderModel(new VideoRenderModel());
+        videoRenderer.setRenderModel(new VideoRenderModel(this.width, this.height));
         videoRenderer.render(new RenderObject({stream: await encoder.getStream()}));
 
         window.setInterval(()=>{
@@ -85,12 +89,31 @@ class Extractor{
         this.wireframeView.addLandmarks(points, 2, 'black');
         this.wireframeView.draw();
 
+       
+
+
+
+        this.wireframeView2.addLandmarks( this.extractFeaturePoints(points, [9,143,199,372] ), 2, 'black');
+        this.wireframeView2.draw();
+
         for(const feature of this.features){
             feature.update(points);
         }
     }
    
-   
+       extractFeaturePoints(points : number[][], featureConstraintIndices : number[]){
+        let landmarks = [];
+        let constraints = [];
+
+        for(let i=0; i<468; i++){
+            landmarks.push(points[i]);
+        }
+        for(const index of featureConstraintIndices){
+            constraints.push(points[index]);
+        }
+        const normalizer = new Normalizer(constraints);
+        return normalizer.append(landmarks);
+    }
 
 }
 

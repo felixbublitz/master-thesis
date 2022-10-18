@@ -8,12 +8,16 @@ import skimage
 from skimage.transform import PiecewiseAffineTransform, warp
 
 LANDMARK_COUNT = 468;
-TEXTURE_WIDTH, TEXTURE_HEIGHT = 512,512
+TEXTURE_WIDTH, TEXTURE_HEIGHT = 276,276
 
 def load_uv(path, width, height):
     data = json.load(open(path))
+    offset_x = 0
+    offset_y = 0
+    scaleX = 1.0
+    scaleY = 1.0
     uv_map = np.array([ (data["u"][str(i)],data["v"][str(i)]) for i in range(LANDMARK_COUNT)])
-    return np.array([(width*x, height*y) for x,y in uv_map])
+    return np.array([(width*scaleX*(x-offset_x/width), height*scaleY*(y-offset_y/width)) for x,y in uv_map])
 
 def get_landmarks(image):
     with mp.solutions.face_mesh.FaceMesh(static_image_mode=True,refine_landmarks=True,max_num_faces=1,min_detection_confidence=0.5) as face_mesh:
@@ -28,7 +32,7 @@ def get_landmarks(image):
 def affine_transform(image, source_landmarks, target_landmarks, output_width, output_heiht):
     tform = PiecewiseAffineTransform()
     tform.estimate(target_landmarks, source_landmarks)
-    texture = warp(image, tform, output_shape=(output_heiht,output_width))
+    texture = warp(image, tform, output_shape=(output_heiht,output_width), mode='edge')
     return (255*texture).astype(np.uint8)
 
 input_image = skimage.io.imread('./input.jpg')
@@ -37,6 +41,6 @@ landmarks = get_landmarks(input_image);
 
 if landmarks is not None:
     texture = affine_transform(input_image, landmarks, landmarks_uv, TEXTURE_WIDTH, TEXTURE_HEIGHT)
-    skimage.io.imsave('./texture.jpg', texture)
+    skimage.io.imsave('./texture.png', texture)
 else:
     print("Could not estimate landmarks")

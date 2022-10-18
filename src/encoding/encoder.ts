@@ -1,5 +1,6 @@
-import { Codec } from './codec';
+import config from '../config';
 import { SequenceLogger, TimeMeasuringItem } from '../logging/sequence_logger';
+import { Codec } from './codec';
 
 export class Encoder{
     private readonly encodingTasks : Map<number, Codec>
@@ -9,18 +10,24 @@ export class Encoder{
     private videoDom : HTMLVideoElement;
     private readonly stream : VideoStream ;
     private readonly sequenceLogger : SequenceLogger;
+    private videoUrl : string;
     onFrameAvailable(peerId : number, data : Int8Array){};  
 
-    constructor(){
+    constructor(videoUrl? : string){
         this.decodingTasks = new Map();
         this.encodingTasks = new Map();
         this.stream = new VideoStream();
+        this.videoUrl = videoUrl;
         this.sequenceLogger = new SequenceLogger();
     }
 
+
+
     async getStream(){
       if(this.stream.getStream() == null){
-        await this.stream.startWebcam(480,360);
+        if(this.videoUrl) await this.stream.startVideo(this.videoUrl);
+        else await this.stream.startWebcam(1280,720);
+
         this.videoDom = document.createElement('video');
         this.videoDom.onloadeddata = ()=>{
           window.setInterval(()=>{this.update()}, 1000/this.maxFPS);
@@ -111,15 +118,37 @@ export class VideoStream{
       return this.stream;
   }
 
+  async startVideo(videoUrl : string) : Promise<void>{
+    const video = document.createElement('video');
+    
+    return new Promise((resolve)=>{
+      video.onloadeddata = ()=>{
+        video.play();
+        (document as any).video = video;
+        this.stream = (video as any).captureStream();
+        resolve();
+      }
+      video.loop = true;
+      video.src = videoUrl;
+    });
+
+    
+  }
+
   async startWebcam(width : number, height : number) : Promise<void>{
-      let videoConstraints = {  mandatory: {
-          maxHeight: height,
-          maxWidth: width 
-        }};
-        
+
       return new Promise((resolve, reject)=>{
           if(navigator.mediaDevices.getUserMedia){
-              navigator.mediaDevices.getUserMedia({video : videoConstraints as MediaTrackConstraints}).then(
+              navigator.mediaDevices.getUserMedia(
+              {
+                video : {
+                  deviceId: "80dd3b7591b50ed97d74fdb995e8003690aaa735fd72b524112891bd13739382",
+                  width: config.VIDEO_WIDTH,
+                  height: config.VIDEO_HEIGHT,
+                  aspectRatio: config.VIDEO_WIDTH/ config.VIDEO_HEIGHT
+                }
+              }
+                ).then(
                   (stream)=>{
                       this.stream = stream;
                       resolve();

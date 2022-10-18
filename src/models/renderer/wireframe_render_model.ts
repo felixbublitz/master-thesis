@@ -1,6 +1,5 @@
 import { drawConnectors } from "@mediapipe/drawing_utils";
 import { FACEMESH_FACE_OVAL, FACEMESH_LEFT_EYE, FACEMESH_LEFT_EYEBROW, FACEMESH_LEFT_IRIS, FACEMESH_LIPS, FACEMESH_RIGHT_EYE, FACEMESH_RIGHT_EYEBROW, FACEMESH_RIGHT_IRIS, FACEMESH_TESSELATION } from "@mediapipe/face_mesh";
-import { EncodableArray } from "../../encoding/types";
 import { SequenceLogger } from "../../logging/sequence_logger";
 import { RenderObject } from "../../renderer/renderer";
 import { RenderModel } from "../../renderer/render_model";
@@ -11,9 +10,13 @@ export class WireframeRenderModel implements RenderModel{
     private width = 320;
     private height = 180;
 
-    constructor(){
-        this.domRenderer.width = this.width;
-        this.domRenderer.height = this.height;
+    constructor(width: number, height : number){
+        this.width = width;
+        this.height = height;
+        this.domRenderer.width = this.width*1;
+        this.domRenderer.height = this.height*1;
+        this.domRenderer.style.width = ''+this.width + "px";
+        this.domRenderer.style.height = ''+this.height + "px";
     }
 
     setSize(width : number, height: number){

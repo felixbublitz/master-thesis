@@ -14,14 +14,14 @@ export class Helper{
         return out;
       }
 
-    static getTranslation(landmarks : Array<any>){
-        const nose = landmarks[6];// nose bottom
+    static getTranslation(landmark6 : any,){
+        const nose = landmark6;// nose bottom
         return new THREE.Vector3(nose.x*320, nose.y*180, nose.z);
       }
   
-      static getScale(landmarks : Array<any>){
-        const left = landmarks[234];
-        const right = landmarks[454];
+      static getScale(landmark234 : any, landmark454 : any){
+        const left = landmark234;
+        const right = landmark454;
         return Math.sqrt((right.x - left.x)**2 + (right.y-left.y)**2 + (right.z-left.z)**2);
       }
 
@@ -31,12 +31,12 @@ export class Helper{
       }
     
     
-      static getRotation = (landmarks : Array<any>) => {
-        const nose = landmarks[6];// nose bottom
-        const top = landmarks[10];
-        const top2 = landmarks[151];// nose bottom
-        const left = landmarks[234];
-        const right = landmarks[454];
+      static getRotation = (landmark6 : any, landmark10 : any, landmark151 : any, landmark234 : any, landmark454 : any) => {
+        const nose = landmark6;// nose bottom
+        const top = landmark10;
+        const top2 = landmark151;// nose bottom
+        const left = landmark234;
+        const right = landmark454;
     
         const rotationX = new THREE.Quaternion();
         const rotationZ = new THREE.Quaternion();

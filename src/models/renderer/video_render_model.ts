@@ -7,16 +7,12 @@ const S_TO_MS = 1000;
 export class VideoRenderModel implements RenderModel{
 
     domRenderer : HTMLVideoElement = document.createElement('video');
-    private width = 320;
-    private height = 180;
 
-    constructor(){
-        this.domRenderer.width = this.width;
-        this.domRenderer.height = this.height;
+    constructor(width : number, height : number){
+        this.domRenderer.width = width;
+        this.domRenderer.height = height;
         this.domRenderer.autoplay = true;
         this.domRenderer.playsInline = true;
-
-        
     }
 
     customPerformanceMeasurement(meter: SequenceLogger, renderObject : RenderObject): boolean {
