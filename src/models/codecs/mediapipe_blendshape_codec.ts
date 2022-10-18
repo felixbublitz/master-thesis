@@ -2,6 +2,7 @@ import { RenderObject } from "../../renderer/renderer";
 import { FaceMesh, InputImage, NormalizedLandmarkList, MatrixData } from "@mediapipe/face_mesh";
 import { EncodableArray, EncodableCoordinates, EncodableNumber } from "../../encoding/types";
 import { Codec } from "../../encoding/codec";
+import { Normalizer, rotateCoordinate } from "../../etc/blendshape";
 
 export class MediapipeBlendshapeCodec implements Codec{
     private readonly faceMesh : FaceMesh;
@@ -33,12 +34,22 @@ export class MediapipeBlendshapeCodec implements Codec{
 
   
         this.faceMesh.onResults((results) => {
+          this.landmarks.empty();
           if (results.multiFaceLandmarks && results.multiFaceLandmarks[0] != null){
             const vertexBufferList = results.multiFaceGeometry[0].getMesh().getVertexBufferList();
 
+            let vertexBufferLandmarks = new Array<number[]>();
+
+            for(let i=0; i<468; i++){
+              vertexBufferLandmarks.push(rotateCoordinate(0, 0, vertexBufferList[i*5], vertexBufferList[i*5+1], 180));
+            }
+
+            const normalizer = new Normalizer(vertexBufferLandmarks);
+            vertexBufferLandmarks = normalizer.append(vertexBufferLandmarks);
+
             const blendshapeCoordinates = [78,308,13,14,2,200,214,432,145,160,22,66,104,55];
             for(const coordinate of blendshapeCoordinates){
-              this.landmarks.add(new EncodableCoordinates(vertexBufferList[coordinate*5],vertexBufferList[coordinate*5+1],vertexBufferList[coordinate*5+2]));
+              this.landmarks.add(new EncodableCoordinates(vertexBufferLandmarks[coordinate][0],vertexBufferLandmarks[coordinate][1],1));
             }
 
             const alignCoordinates = [6,10,151,234,454];

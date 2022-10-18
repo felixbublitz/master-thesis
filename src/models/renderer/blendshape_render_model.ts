@@ -55,11 +55,20 @@ export class BlendshapeRendermodel implements RenderModel {
   }
 
   constructor(width: number, height: number) {
-    this.mouthFeature = new Feature([0, 1, 2, 3], [4, 5, 6, 7], BLENDSHAPE_REF_FACE);
-    this.eyesFeature = new Feature([8], [9, 10], BLENDSHAPE_REF_FACE);
-    this.eyeBrowFeature = new Feature([11], [12, 13], BLENDSHAPE_REF_FACE);
+
+    let encodedLandmarkIndices = [78,308,13,14,2,200,214,432,145,160,22,66,104,55];
+    this.mouthFeature = new Feature([0, 1, 2, 3], [4, 5, 6, 7], encodedLandmarkIndices.map(i => BLENDSHAPE_REF_FACE[i]));
+    this.eyesFeature = new Feature([8], [9, 10], encodedLandmarkIndices.map(i => BLENDSHAPE_REF_FACE[i]));
+    this.eyeBrowFeature = new Feature([11], [12, 13], encodedLandmarkIndices.map(i => BLENDSHAPE_REF_FACE[i]));
 
     this.mouthFeature.addBlendshape(BLENDSHAPE_MOUTH_OPEN);
+
+  /*  let subset = [];
+    for(let coord of [78,308,13,14,2,200,214,432,145,160,22,66,104,55]){
+      subset.push(Blendsha[coord]);
+    }
+*/
+
     this.mouthFeature.addBlendshape(BLENDSHAPE_MOUTH_SMILE);
     this.eyesFeature.addBlendshape(BLENDSHAPE_EYES_CLOSED);
     this.eyeBrowFeature.addBlendshape(BLENDSHAPE_EYEBROW_UP);
@@ -103,12 +112,24 @@ export class BlendshapeRendermodel implements RenderModel {
   init(data: any): void { }
 
   renderFrame(renderObject: RenderObject): void {
-    let landmarks = Helper.scaleLandmarks(renderObject.data.landmarks, 320, 180);
+    const landmarks = Helper.scaleLandmarks(renderObject.data.landmarks, 320, 180);
+
+
+    const featureLandmarks = [];
+
+    for(let i=0; i<14;i++){
+      featureLandmarks.push([landmarks[i].x,landmarks[i].y]);
+    }
+
+
+
+    const alignLandmarks = landmarks.slice(14,19);
+
 
     if (landmarks != null) {
       this.group.clear();
-      this.alignModel(landmarks);
-      this.animate(landmarks);
+      this.alignModel(alignLandmarks);
+      this.animate(featureLandmarks);
       this.group.add(this.character);
     }
 
@@ -116,16 +137,10 @@ export class BlendshapeRendermodel implements RenderModel {
   }
 
   private animate(landmarks: any) {
-    let points = [];
-    for (let i = 0; i < 14; i++) {
-      points.push(rotateCoordinate(0, 0, landmarks[i].x, landmarks[i].y, 180));
-    }
-    const normalizer = new Normalizer(points);
-    points = normalizer.append(points);
 
-    this.mouthFeature.update(points);
-    this.eyeBrowFeature.update(points);
-    this.eyesFeature.update(points);
+    this.mouthFeature.update(landmarks);
+    this.eyeBrowFeature.update(landmarks);
+    this.eyesFeature.update(landmarks);
 
     this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['jawOpen']] = this.mouthFeature.blendshapes[0].getValue();
     this.mesh.morphTargetInfluences[this.mesh.morphTargetDictionary['mouthSmile']] = this.mouthFeature.blendshapes[1].getValue();
@@ -165,18 +180,18 @@ export class BlendshapeRendermodel implements RenderModel {
     this.group.rotation.z = 0;
 
     //rotation
-    const rotation = this.getLowPassQuaternion(this.rotation_o, Helper.getRotation(landmarks[14], landmarks[15], landmarks[16], landmarks[17], landmarks[18]), 0.5);
+    const rotation = this.getLowPassQuaternion(this.rotation_o, Helper.getRotation(landmarks[0], landmarks[1], landmarks[2], landmarks[3], landmarks[4]), 0.5);
     this.rotation_o = rotation;
     this.group.applyQuaternion(rotation);
 
     //scale
-    const scale = Helper.getScale(landmarks[17], landmarks[18]);
+    const scale = Helper.getScale(landmarks[3], landmarks[4]);
     this.group.scale.copy(this.getLowPassVector(new THREE.Vector3().addScalar(this.scale_o), new THREE.Vector3().addScalar(scale), 0.5));
 
     this.scale_o = scale;
 
     //translate
-    const translation = Helper.getTranslation(landmarks[14]);
+    const translation = Helper.getTranslation(landmarks[0]);
     this.group.position.copy(translation);
   }
 

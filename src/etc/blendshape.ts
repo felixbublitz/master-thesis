@@ -1,4 +1,3 @@
-import { BLENDSHAPE_REF_FACE } from "./face_geom";
 
 let numeric = require ('numeric');
 
@@ -64,7 +63,7 @@ export class Feature{
         this.landmarks = landmarks;
         this.constraints = constraints;
         this.blendshapes = new Array();
-        this.canonicalValues = this.extractFeaturePoints(BLENDSHAPE_REF_FACE, this.landmarks, this.constraints);
+        this.canonicalValues = this.extractFeaturePoints(canonicalPoints, this.landmarks, this.constraints);
     }
 
     update(points : number[][]){
