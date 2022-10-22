@@ -1,11 +1,17 @@
 <h1>Evaluation of an efficient web-based video conferencing approach using image reconstruction from face-meshes</h1>
 
 
-Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.   
-
-Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.   
-
-Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi
+The aim of this thesis was to investigate, whether landmark-based alternative video trans-
+mission approaches are suitable for the web. These alternative approaches were already
+proposed for the bandwidth reduction in web conferences. However, the applicability for
+web applications is uncharted by now. For this purpose, a web evaluation framework
+was developed, enabling the realization and testing of various alternative transmission
+methods. For a proof-of-concept, two approaches were implemented: A face swapping
+and a 3D puppetry approach. It could be proved, that facial based bandwidth reduction
+methods are suitable for the application in the web. Merely, the processing times on the
+tested mobile phone were too high to achieve a fluent video conversation. It has to be
+further investigated, if improved methods can be developed with better visual quality and
+compatibility.
 
 <p><b>Paper: https://www.overleaf.com/read/fxgfqshkgxss</b></p>
 
