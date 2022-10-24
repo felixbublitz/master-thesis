@@ -144,7 +144,6 @@ export class VideoStream{
               navigator.mediaDevices.getUserMedia(
               {
                 video : {
-                  deviceId: "80dd3b7591b50ed97d74fdb995e8003690aaa735fd72b524112891bd13739382",
                   width: config.VIDEO_WIDTH,
                   height: config.VIDEO_HEIGHT,
                   aspectRatio: config.VIDEO_WIDTH/ config.VIDEO_HEIGHT
