@@ -80,16 +80,17 @@ export class BlendshapeRendermodel implements RenderModel {
     this.renderer.setClearColor(0xffffff);
     this.renderer.shadowMap.enabled = true;
     this.renderer.outputEncoding = THREE.sRGBEncoding;
-    this.renderer.setPixelRatio(window.devicePixelRatio );
-    this.renderer.setSize(width, height);
 
     const loader = new THREE.TextureLoader();
     loader.load('../assets/img/near-background.jpg', (texture) => {
-      //this.scene.background = texture;
+      this.scene.background = texture;
     });
 
     this.camera = new THREE.PerspectiveCamera(45, 1920 / 1080, 1, 1000);
     this.camera.position.z = 200;
+
+    this.renderer.setPixelRatio(window.devicePixelRatio );
+    this.renderer.setSize(width, height);
 
     const light = new THREE.HemisphereLight(0xffeeb1, 0x080820, 2);
     this.scene.add(light);

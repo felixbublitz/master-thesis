@@ -31,7 +31,6 @@ class App{
             this.videoConference.addTransmissionModel({name : "Video", codec: null, renderModel: new VideoRenderModel(config.VIDEO_WIDTH, config.VIDEO_HEIGHT)} as TransmissionModel)
             this.videoConference.addTransmissionModel({name : "Wireframe", codec: new MediapipeLandmarksCodec(), renderModel: new WireframeRenderModel(config.VIDEO_WIDTH, config.VIDEO_HEIGHT)} as TransmissionModel)
             this.videoConference.addTransmissionModel({name : "Face Swap", codec: new MediapipeNormalizedLandmarksCodec(), renderModel: new FaceswapRenderModel(config.VIDEO_WIDTH, config.VIDEO_HEIGHT)} as TransmissionModel)
-            this.videoConference.addTransmissionModel({name : "Puppetry (Rigged)", codec: new MediapipeTransformedLandmarksCodec(), renderModel: new Replica3DRenderModel(config.VIDEO_WIDTH, config.VIDEO_HEIGHT)} as TransmissionModel)
             this.videoConference.addTransmissionModel({name : "Puppetry (Blendshape)", codec: new MediapipeBlendshapeCodec(), renderModel: new BlendshapeRendermodel(config.VIDEO_WIDTH, config.VIDEO_HEIGHT)} as TransmissionModel)
     
             for(const transmissionModel of this.videoConference.transmissionModels){
