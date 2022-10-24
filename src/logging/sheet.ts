@@ -1,6 +1,6 @@
 import { Parameter } from "./sequence_logger";
 
-const CSV_NEW_COLUMN = ',';
+const CSV_NEW_COLUMN = ';';
 const CSV_NEW_ROW = '\n';
 
 export class Sheet{
@@ -16,7 +16,7 @@ export class Sheet{
     }
 
     addFeatures(dataset : Sheet.Row){
-        for(const param of dataset.items){
+        for(const param of dataset.items.values()){
             const title = param.getTitle(true);
             if(!this.fields.includes(title))
             this.fields.push(title);
@@ -48,9 +48,13 @@ export class Sheet{
         //content
         this.rows.forEach(row => {
             out += (row.timestamp - this.creationTime) + CSV_NEW_COLUMN;
-            row.items.forEach((param, title)=>{
-                out += param.value + CSV_NEW_COLUMN
-            });
+
+
+            this.fields.forEach((title) => {
+                const param = row.items.get(title);
+                if(param != null)  out += param.value + CSV_NEW_COLUMN
+            })
+
             out = out.slice(0, -1);
             out += CSV_NEW_ROW;
             
@@ -75,18 +79,18 @@ export namespace Sheet{
     
     export class Row{
         readonly timestamp : number;
-        readonly items : Array<Parameter>
+        readonly items : Map<string, Parameter>
         constructor(){
             this.timestamp = Date.now();
-            this.items = new Array();
+            this.items = new Map();
         }
 
         isEmpty(){
-            return this.items.length == 0;
+            return this.items.size == 0;
         }
 
         add(param : Parameter){
-            this.items.push(param);
+            this.items.set(param.getTitle(true),param);
             this.onChanged(this);
         }
         
@@ -96,7 +100,7 @@ export namespace Sheet{
 
         print(){
             let out = "";
-            for(const param of this.items){
+            for(const param of this.items.values()){
                 out += param.title + ': ' + param.value + ' ' + (param.unit != null?param.unit:'') + '\n';
             }
             console.log(out);

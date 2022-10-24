@@ -6,7 +6,7 @@ export class Encoder{
     private readonly encodingTasks : Map<number, Codec>
     private readonly decodingTasks : Map<number, boolean>;
 
-    private readonly maxFPS = 200;
+    private readonly maxFPS = config.MAX_FRAMERATE;
     private videoDom : HTMLVideoElement;
     private readonly stream : VideoStream ;
     private readonly sequenceLogger : SequenceLogger;
@@ -115,7 +115,9 @@ export class VideoStream{
   onFrameChanged(){};
 
   getStream() : MediaStream{
-      return this.stream;
+   // if(this.stream == null)
+      //throw("stream not available.")
+    return this.stream;
   }
 
   async startVideo(videoUrl : string) : Promise<void>{

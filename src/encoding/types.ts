@@ -1,3 +1,5 @@
+import { precision } from "numeric";
+
 export enum CodecType{
     Undefined,
     Video,
@@ -72,9 +74,62 @@ export class EncodableCoordinates extends EncodablePrimitive {
         let zIndex = yIndex + precision;
 
         return new EncodableCoordinates(
-            EncodableNumber.decode(binary.slice(xIndex, xIndex + precision)).getValue(),
-            EncodableNumber.decode(binary.slice(yIndex, yIndex + precision)).getValue(),
-            EncodableNumber.decode(binary.slice(zIndex, zIndex + precision)).getValue()
+            EncodableNumber.decode(binary.slice(xIndex, xIndex + precision), precision).getValue(),
+            EncodableNumber.decode(binary.slice(yIndex, yIndex + precision), precision).getValue(),
+            EncodableNumber.decode(binary.slice(zIndex, zIndex + precision), precision).getValue()
+        );
+    }
+}
+
+
+
+export class Encodable2DCoordinates extends EncodablePrimitive {
+    private x:EncodableNumber;
+    private y:EncodableNumber;
+
+    getValue(){
+        return {x : this.x.getValue(), y : this.y.getValue()}
+    }
+
+    static getEncodedSize(precision: number, includeHeader: boolean): number {
+        return Number(includeHeader) + 2*precision;
+    }
+
+    constructor(x : number, y : number){
+        super();
+        this.x = new EncodableNumber(x); 
+        this.y = new EncodableNumber(y);
+    }
+
+    public encode(precision : number, includeHeader? : boolean) : Int8Array{
+        let out = new Int8Array(2 * precision + Number(includeHeader));
+        const encodedX = this.x.encode(precision);
+        const encodedY = this.y.encode(precision);
+
+        if(includeHeader) out[0] = precision;
+        let xIndex = Number(includeHeader);
+        let yIndex = xIndex + precision;
+
+        for(let byteIndex=0; byteIndex<precision; byteIndex++){
+            out[xIndex+byteIndex] = encodedX[byteIndex];
+            out[yIndex+byteIndex] = encodedY[byteIndex];
+        }
+        return out;
+    }
+
+    static decode(binary : Int8Array, precision? : number) : EncodablePrimitive{
+        let includesHeader = precision == null?true:false;
+        if(precision == null) precision = binary[0]
+                
+        if((binary.length-Number(includesHeader)) % 2*precision != 0)
+            throw("wrong size");
+    
+        let xIndex = Number(includesHeader);
+        let yIndex = xIndex + precision;
+
+        return new Encodable2DCoordinates(
+            EncodableNumber.decode(binary.slice(xIndex, xIndex + precision), precision).getValue(),
+            EncodableNumber.decode(binary.slice(yIndex, yIndex + precision), precision).getValue(),
         );
     }
 }
@@ -87,6 +142,14 @@ export class EncodableNumber extends EncodablePrimitive{
         super();
         this.value = value;
     }
+
+    private beforeDecimal(num : number) {
+        if (Number.isInteger(num)) {
+          return 1;
+        }
+      
+        return num.toString().split('.')[0].length;
+      }
 
     getValue() {
         return this.value;
@@ -105,30 +168,44 @@ export class EncodableNumber extends EncodablePrimitive{
         const out = new ArrayBuffer(precision);
         //const mask = Number(255); //11111111
 
-        new DataView(out).setFloat64(0,this.value);
+        switch(precision){
+            case 1:
+                new DataView(out).setInt8(0,this.value*10);
+                break;
+            case 2:
+                new DataView(out).setInt16(0,this.value*1000);
+                break;
+            case 4:
+                new DataView(out).setFloat32(0,this.value);
+                break;
+            case 8: 
+            new DataView(out).setFloat64(0,this.value);
+                break;
+            default:
+                throw('precision must be 2^n')
+        }
      
-
-        
-
-        /*for(let i=0; i<precision; i++){
-            out[i] = (normalizedNumber >> (8*i)) & mask;
-        }*/
         return new Int8Array(out);
     }
 
-    static decode(binary : Int8Array) : EncodableNumber{
-        //let out = 0;
-        //const mask = 255; //11111111
+    static decode(binary : Int8Array, precision : number) : EncodableNumber{
 
-        /*const digits = EncodableNumber.getDigitCountFromBytes(binary.length);
-        for(let i=0; i<binary.length; i++){
-            if(i == binary.length-1) out += (binary[i]) << 8*i;
-            else out += (binary[i] & mask) << 8*i;
+        //precision = 8;
+       
+        switch(precision){
+            case 1:
+                return new EncodableNumber(new DataView(binary.buffer,0).getInt8(0)/10);
+            case 2:
+                return new EncodableNumber(new DataView(binary.buffer,0).getInt16(0)/1000);
+            case 4:
+                return new EncodableNumber(new DataView(binary.buffer,0).getFloat32(0));
+            case 8: 
+                return new EncodableNumber(new DataView(binary.buffer,0).getFloat64(0));
+            default:
+                throw('precision must be 2^n')
         }
-        out = parseFloat((out * (1/Math.pow(10, digits))).toPrecision(digits));*/
 
 
-        return new EncodableNumber(new DataView(binary.buffer,0).getFloat64(0));
     }
 
     private static getDigitCountFromBytes(bytes : number) : number{

@@ -55,20 +55,12 @@ export class BlendshapeRendermodel implements RenderModel {
   }
 
   constructor(width: number, height: number) {
-
-    let encodedLandmarkIndices = [78,308,13,14,2,200,214,432,145,160,22,66,104,55];
+    let encodedLandmarkIndices = [78, 308, 13, 14, 2, 200, 214, 432, 145, 160, 22, 66, 104, 55];
     this.mouthFeature = new Feature([0, 1, 2, 3], [4, 5, 6, 7], encodedLandmarkIndices.map(i => BLENDSHAPE_REF_FACE[i]));
     this.eyesFeature = new Feature([8], [9, 10], encodedLandmarkIndices.map(i => BLENDSHAPE_REF_FACE[i]));
     this.eyeBrowFeature = new Feature([11], [12, 13], encodedLandmarkIndices.map(i => BLENDSHAPE_REF_FACE[i]));
 
     this.mouthFeature.addBlendshape(BLENDSHAPE_MOUTH_OPEN);
-
-  /*  let subset = [];
-    for(let coord of [78,308,13,14,2,200,214,432,145,160,22,66,104,55]){
-      subset.push(Blendsha[coord]);
-    }
-*/
-
     this.mouthFeature.addBlendshape(BLENDSHAPE_MOUTH_SMILE);
     this.eyesFeature.addBlendshape(BLENDSHAPE_EYES_CLOSED);
     this.eyeBrowFeature.addBlendshape(BLENDSHAPE_EYEBROW_UP);
@@ -88,17 +80,16 @@ export class BlendshapeRendermodel implements RenderModel {
     this.renderer.setClearColor(0xffffff);
     this.renderer.shadowMap.enabled = true;
     this.renderer.outputEncoding = THREE.sRGBEncoding;
+    this.renderer.setPixelRatio(window.devicePixelRatio );
+    this.renderer.setSize(width, height);
 
     const loader = new THREE.TextureLoader();
     loader.load('../assets/img/near-background.jpg', (texture) => {
-      this.scene.background = texture;
+      //this.scene.background = texture;
     });
 
     this.camera = new THREE.PerspectiveCamera(45, 1920 / 1080, 1, 1000);
     this.camera.position.z = 200;
-
-    this.renderer.setPixelRatio(window.devicePixelRatio * 2);
-    this.renderer.setSize(width, height);
 
     const light = new THREE.HemisphereLight(0xffeeb1, 0x080820, 2);
     this.scene.add(light);
@@ -112,21 +103,14 @@ export class BlendshapeRendermodel implements RenderModel {
   init(data: any): void { }
 
   renderFrame(renderObject: RenderObject): void {
-    const landmarks = Helper.scaleLandmarks(renderObject.data.landmarks, 320, 180);
-
-
+    const featureLandmarksIn = renderObject.data.features;
     const featureLandmarks = [];
-
-    for(let i=0; i<14;i++){
-      featureLandmarks.push([landmarks[i].x,landmarks[i].y]);
+    for (let i = 0; i < 14; i++) {
+      featureLandmarks.push([featureLandmarksIn[i].x, featureLandmarksIn[i].y]);
     }
 
-
-
-    const alignLandmarks = landmarks.slice(14,19);
-
-
-    if (landmarks != null) {
+    const alignLandmarks = Helper.scaleLandmarks(renderObject.data.align, 320, 180)
+    if (alignLandmarks != null) {
       this.group.clear();
       this.alignModel(alignLandmarks);
       this.animate(featureLandmarks);
