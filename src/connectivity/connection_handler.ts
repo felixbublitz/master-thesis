@@ -320,7 +320,7 @@ export class ConnectionHandler{
             const senders = this.peers[peerId].getSenders()[0];
             if(senders != null){
         const params = senders.getParameters();
-        params.encodings[0].maxBitrate = 100000000
+        //params.encodings[0].maxBitrate = 100000000
         senders.setParameters(params); //1mbps*/
         }
         });
