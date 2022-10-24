@@ -9,5 +9,6 @@ export default {
     STATS_EXPORT_FILE_NAME: 'stats.csv',
     SELECT_VIDEO_PROMPT : 'Select test video by name or leave emty for webcam stream',
     VIDEO_WIDTH: 1280,
-    VIDEO_HEIGHT: 720
+    VIDEO_HEIGHT: 720,
+    MAX_FRAMERATE: 30
 }
